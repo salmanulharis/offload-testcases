@@ -364,9 +364,10 @@ export function extractImportedResults(raw) {
   return validateResultsDoc(candidate);
 }
 
-export function matchesQuery(test, result, { query = "", status = "all" } = {}) {
+export function matchesQuery(test, result, { query = "", status = "all", priority = "all" } = {}) {
   const shown = displayStatus(result.status);
   if (status !== "all" && shown !== status) return false;
+  if (priority !== "all" && asString(test.priority) !== priority) return false;
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
   const haystack = [test.id, test.title, test.description, test.where, test.url, test.given, test.when, test.then, test.sectionTitle, test.subsectionTitle]

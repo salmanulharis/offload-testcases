@@ -4,13 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Offload Test Cases</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@450;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/css/app.css" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to tests</a>
     <header class="top">
       <div class="top__title">
-        <p class="eyebrow">Test tracker</p>
+        <p class="eyebrow">Manual QA runner</p>
         <h1 id="app-title">Offload Test Cases</h1>
       </div>
       <div class="top__meta">
@@ -33,15 +36,29 @@
         <h2 id="progress-heading">Testing Progress</h2>
         <p id="progress-summary" class="progress-summary">Overall: —</p>
       </div>
-      <div class="bar" aria-hidden="true"><span id="progress-bar"></span></div>
+      <div class="bar" role="progressbar" aria-labelledby="progress-summary"><span id="progress-bar"></span></div>
       <ul id="progress-counts" class="counts"></ul>
       <div class="filters">
         <label class="search">
           <span class="visually-hidden">Search tests</span>
-          <input id="search" type="search" placeholder="Search title or id" />
+          <input id="search" type="search" placeholder="Search id, title, where…" />
         </label>
-        <div id="status-filters" class="chips" role="tablist" aria-label="Filter by status"></div>
+        <div>
+          <p class="filter-label">Status</p>
+          <div id="status-filters" class="chips" role="group" aria-label="Filter by status"></div>
+        </div>
+        <div>
+          <p class="filter-label">Priority</p>
+          <div id="priority-filters" class="chips" role="group" aria-label="Filter by priority"></div>
+        </div>
       </div>
+      <nav id="section-nav" class="section-nav" aria-label="Jump to section"></nav>
+      <p class="keys-hint">Keys on a selected case: <kbd>P</kbd> pass <kbd>F</kbd> fail <kbd>B</kbd> blocked <kbd>S</kbd> skip <kbd>I</kbd> in progress <kbd>N</kbd> not tested</p>
+      <details class="howto">
+        <summary>How to run this pass</summary>
+        <p id="catalog-note" class="muted"></p>
+        <div id="page-map"></div>
+      </details>
     </section>
 
     <main id="main" class="main"></main>

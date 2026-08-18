@@ -21,6 +21,8 @@ const state = {
   results: emptyResultsDoc(),
   query: "",
   status: "all",
+  priority: "all",
+  activeTestId: "",
   sync: "loading",
   message: "",
   collapsed: new Set(),
@@ -42,6 +44,10 @@ const els = {
   bar: document.getElementById("progress-bar"),
   counts: document.getElementById("progress-counts"),
   chips: document.getElementById("status-filters"),
+  priorityChips: document.getElementById("priority-filters"),
+  sectionNav: document.getElementById("section-nav"),
+  catalogNote: document.getElementById("catalog-note"),
+  pageMap: document.getElementById("page-map"),
   search: document.getElementById("search"),
   main: document.getElementById("main"),
   modal: document.getElementById("modal"),
@@ -169,6 +175,7 @@ function visibleTests() {
     matchesQuery(test, getResult(state.results, test.id), {
       query: state.query,
       status: state.status,
+      priority: state.priority,
     })
   );
 }
@@ -203,9 +210,12 @@ function renderProgress() {
   const counts = countStatuses(state.definitions, state.results);
   els.summary.textContent = `Overall: ${counts.completed} / ${counts.total} completed · ${counts.percent}%`;
   els.bar.style.width = `${counts.percent}%`;
+  els.bar.setAttribute("aria-valuenow", String(counts.percent));
+  els.bar.setAttribute("aria-valuemin", "0");
+  els.bar.setAttribute("aria-valuemax", "100");
   els.counts.innerHTML = STATUSES.map(
     (status) =>
-      `<li><strong>${counts[status]}</strong> ${escapeHtml(STATUS_LABELS[status])}</li>`
+      `<li><button type="button" class="${status}" data-filter="${status}" aria-pressed="${state.status === status}"><strong>${counts[status]}</strong>${escapeHtml(STATUS_LABELS[status])}</button></li>`
   ).join("");
   els.chips.innerHTML = ["all", ...STATUSES]
     .map((status) => {
@@ -214,6 +224,18 @@ function renderProgress() {
       return `<button type="button" class="chip" data-filter="${status}" aria-pressed="${pressed}">${escapeHtml(label)}</button>`;
     })
     .join("");
+  if (els.priorityChips) {
+    els.priorityChips.innerHTML = [
+      ["all", "All"],
+      ["P0", "P0 first"],
+      ["P1", "P1"],
+    ]
+      .map(
+        ([value, label]) =>
+          `<button type="button" class="chip ${value.toLowerCase()}" data-priority="${value}" aria-pressed="${state.priority === value}">${escapeHtml(label)}</button>`
+      )
+      .join("");
+  }
 }
 
 function renderTest(test) {
@@ -234,21 +256,20 @@ function renderTest(test) {
       </div>`
     : "";
 
-  const spec = [
-    test.priority && `<p class="muted"><strong>Priority:</strong> ${escapeHtml(test.priority)}</p>`,
-    test.where && `<p><strong>Where:</strong> ${escapeHtml(test.where)}</p>`,
-    test.url && `<p class="muted"><strong>URL:</strong> <code>${escapeHtml(test.url)}</code></p>`,
-    test.given && `<p><strong>Given:</strong> ${escapeHtml(test.given)}</p>`,
-    test.when && `<p><strong>When:</strong> ${escapeHtml(test.when)}</p>`,
-    (test.then || test.expectedResult) && `<p><strong>Then:</strong> ${escapeHtml(test.then || test.expectedResult)}</p>`,
-    !test.when && test.description && `<p>${escapeHtml(test.description)}</p>`,
-  ].filter(Boolean).join("");
+  const spec = `<dl class="spec">
+    ${test.where ? `<div class="spec__row"><dt>Where</dt><dd>${escapeHtml(test.where)}</dd></div>` : ""}
+    ${test.url ? `<div class="spec__row"><dt>URL</dt><dd><code>${escapeHtml(test.url)}</code></dd></div>` : ""}
+    ${test.given ? `<div class="spec__row given"><dt>Given</dt><dd>${escapeHtml(test.given)}</dd></div>` : ""}
+    ${test.when ? `<div class="spec__row when"><dt>When</dt><dd>${escapeHtml(test.when)}</dd></div>` : ""}
+    ${test.then || test.expectedResult ? `<div class="spec__row then"><dt>Then</dt><dd>${escapeHtml(test.then || test.expectedResult)}</dd></div>` : ""}
+    ${!test.when && test.description ? `<div class="spec__row"><dt>Notes</dt><dd>${escapeHtml(test.description)}</dd></div>` : ""}
+  </dl>`;
 
-  return `<article class="test" data-test="${escapeHtml(test.id)}">
+  return `<article class="test is-${status}${state.activeTestId === test.id ? " is-active" : ""}" data-test="${escapeHtml(test.id)}" tabindex="0">
     <div class="test__head">
       <span class="pill ${status}">${escapeHtml(STATUS_LABELS[status])}</span>
       <div class="test__grow">
-        <h4>${escapeHtml(test.title)}${test.priority ? ` <span class="prio">${escapeHtml(test.priority)}</span>` : ""}</h4>
+        <h4>${escapeHtml(test.title)}${test.priority ? ` <span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""}</h4>
         <div class="test__id">${escapeHtml(test.id)}</div>
       </div>
       <div class="status-actions">
@@ -283,16 +304,27 @@ function groupVisible() {
 function render() {
   if (!state.definitions) return;
   els.title.textContent = state.definitions.title || "Offload Test Cases";
+  document.title = state.definitions.title || "Offload Test Cases";
   renderProgress();
-  if (state.definitions.description && !document.getElementById("catalog-note")) {
-    const note = document.createElement("p");
-    note.id = "catalog-note";
-    note.className = "muted catalog-note";
-    note.textContent = state.definitions.description;
-    els.summary.after(note);
+  if (els.catalogNote) els.catalogNote.textContent = state.definitions.description || "";
+  if (els.pageMap) {
+    const map = Array.isArray(state.definitions.pageMap) ? state.definitions.pageMap : [];
+    els.pageMap.className = "page-map";
+    els.pageMap.innerHTML = map
+      .map(
+        (item) =>
+          `<div><strong>${escapeHtml(item.screen)}</strong><span class="muted">${escapeHtml(item.path)}</span>${item.url ? `<code>${escapeHtml(item.url)}</code>` : ""}</div>`
+      )
+      .join("");
   }
 
   const grouped = groupVisible();
+  if (els.sectionNav) {
+    els.sectionNav.innerHTML = state.definitions.sections
+      .filter((section) => grouped.has(section.id))
+      .map((section) => `<a href="#section-${escapeHtml(section.id)}">${escapeHtml(section.title)}</a>`)
+      .join("");
+  }
   if (!grouped.size) {
     els.main.innerHTML = `<p class="empty">No test cases match this filter.</p>`;
     return;
@@ -339,7 +371,7 @@ function render() {
             ${sectionTests.filter((test) => !test.subsectionId).map(renderTest).join("")}
           </div>`;
 
-      return `<section class="section">
+      return `<section class="section" id="section-${escapeHtml(section.id)}">
         <div class="section__head">
           <button type="button" data-collapse="${escapeHtml(section.id)}" class="section__grow">
             <h2>${escapeHtml(section.title)}</h2>
@@ -358,6 +390,18 @@ function render() {
       </section>`;
     })
     .join("");
+
+  restoreActiveFocus();
+}
+
+function restoreActiveFocus() {
+  if (!state.activeTestId) return;
+  const active = document.activeElement;
+  if (active && active.closest && (active.closest("input, textarea, select") || active.id === "search")) {
+    return;
+  }
+  const card = els.main.querySelector(`[data-test="${CSS.escape(state.activeTestId)}"]`);
+  if (card) card.focus({ preventScroll: true });
 }
 
 async function loadDefinitions() {
@@ -469,11 +513,51 @@ els.search.addEventListener("input", (event) => {
   render();
 });
 
+function setStatusFilter(status) {
+  state.status = status;
+  render();
+}
+
 els.chips.addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");
   if (!button) return;
-  state.status = button.dataset.filter;
+  setStatusFilter(button.dataset.filter);
+});
+
+els.counts.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-filter]");
+  if (!button) return;
+  setStatusFilter(state.status === button.dataset.filter ? "all" : button.dataset.filter);
+});
+
+els.priorityChips.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-priority]");
+  if (!button) return;
+  const next = button.dataset.priority;
+  state.priority = state.priority === next && next !== "all" ? "all" : next;
   render();
+});
+
+els.main.addEventListener("focusin", (event) => {
+  const card = event.target.closest("[data-test]");
+  if (card) state.activeTestId = card.dataset.test;
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.target.matches("input, textarea, select")) return;
+  const keys = {
+    p: "passed",
+    f: "failed",
+    b: "blocked",
+    s: "skipped",
+    i: "in_progress",
+    n: "not_tested",
+  };
+  const status = keys[event.key.toLowerCase()];
+  if (!status || !state.activeTestId) return;
+  event.preventDefault();
+  if (status === "failed") state.openTests.add(state.activeTestId);
+  applyStatus([state.activeTestId], status);
 });
 
 els.banner.addEventListener("click", (event) => {
@@ -481,6 +565,9 @@ els.banner.addEventListener("click", (event) => {
 });
 
 els.main.addEventListener("click", async (event) => {
+  const card = event.target.closest("[data-test]");
+  if (card) state.activeTestId = card.dataset.test;
+
   const collapse = event.target.closest("[data-collapse]");
   if (collapse) {
     const id = collapse.dataset.collapse;
