@@ -728,6 +728,34 @@ button.primary:hover { filter: brightness(1.06); }
 
 .prio.p1 { color: var(--muted); background: #eef1f4; }
 
+.goal {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--accent);
+  background: #e7f2f0;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.purpose-line,
+.section-purpose {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.section-purpose {
+  margin: 0 4px 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f4f7f5;
+}
+
+.spec__row.purpose { border-left: 3px solid var(--accent); background: #eef6f4; }
+.spec__row.impact { border-left: 3px solid var(--blocked); }
+
 .empty {
   padding: 28px;
   text-align: center;

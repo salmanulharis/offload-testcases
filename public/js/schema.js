@@ -173,35 +173,51 @@ export function validateResultsDoc(raw) {
   return { ok: true, errors: [], value: normalizeResultsDoc(raw) };
 }
 
+export function normalizeGoals(value) {
+  if (Array.isArray(value)) return value.map(asString).map((item) => item.trim()).filter(Boolean);
+  return asString(value)
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeTestCase(testCase, section, subsectionId, subsectionTitle) {
+  const sectionId = asString(section.id);
+  const sectionTitle = asString(section.title) || sectionId;
+  return {
+    ...testCase,
+    id: asString(testCase.id),
+    title: asString(testCase.title) || asString(testCase.id),
+    description: asString(testCase.description || testCase.when),
+    expectedResult: asString(testCase.expectedResult || testCase.then),
+    where: asString(testCase.where),
+    url: asString(testCase.url),
+    given: asString(testCase.given),
+    when: asString(testCase.when),
+    then: asString(testCase.then),
+    priority: asString(testCase.priority),
+    purpose: asString(testCase.purpose || section.purpose),
+    goals: normalizeGoals(testCase.goals?.length ? testCase.goals : section.goals),
+    failImpact: asString(testCase.failImpact),
+    sectionId,
+    sectionTitle,
+    sectionPurpose: asString(section.purpose),
+    subsectionId,
+    subsectionTitle,
+  };
+}
+
 export function flattenTestCases(definitions) {
   const tests = [];
   if (!isObject(definitions) || !Array.isArray(definitions.sections)) return tests;
 
   for (const section of definitions.sections) {
     if (!isObject(section)) continue;
-    const sectionId = asString(section.id);
-    const sectionTitle = asString(section.title) || sectionId;
 
     const directCases = Array.isArray(section.testCases) ? section.testCases : [];
     for (const testCase of directCases) {
       if (!isObject(testCase) || !testCase.id) continue;
-      tests.push({
-        ...testCase,
-        id: asString(testCase.id),
-        title: asString(testCase.title) || asString(testCase.id),
-        description: asString(testCase.description || testCase.when),
-        expectedResult: asString(testCase.expectedResult || testCase.then),
-        where: asString(testCase.where),
-        url: asString(testCase.url),
-        given: asString(testCase.given),
-        when: asString(testCase.when),
-        then: asString(testCase.then),
-        priority: asString(testCase.priority),
-        sectionId,
-        sectionTitle,
-        subsectionId: "",
-        subsectionTitle: "",
-      });
+      tests.push(normalizeTestCase(testCase, section, "", ""));
     }
 
     const subsections = Array.isArray(section.subsections) ? section.subsections : [];
@@ -212,23 +228,7 @@ export function flattenTestCases(definitions) {
       const cases = Array.isArray(subsection.testCases) ? subsection.testCases : [];
       for (const testCase of cases) {
         if (!isObject(testCase) || !testCase.id) continue;
-        tests.push({
-          ...testCase,
-          id: asString(testCase.id),
-          title: asString(testCase.title) || asString(testCase.id),
-          description: asString(testCase.description || testCase.when),
-          expectedResult: asString(testCase.expectedResult || testCase.then),
-          where: asString(testCase.where),
-          url: asString(testCase.url),
-          given: asString(testCase.given),
-          when: asString(testCase.when),
-          then: asString(testCase.then),
-          priority: asString(testCase.priority),
-          sectionId,
-          sectionTitle,
-          subsectionId,
-          subsectionTitle,
-        });
+        tests.push(normalizeTestCase(testCase, section, subsectionId, subsectionTitle));
       }
     }
   }
@@ -391,8 +391,9 @@ export function extractImportedResults(raw) {
   return validateResultsDoc(candidate);
 }
 
-export function matchesQuery(test, result, { query = "", status = "all", priority = "all", view = "all", sectionId = "" } = {}) {
+export function matchesQuery(test, result, { query = "", status = "all", priority = "all", view = "all", sectionId = "", goal = "all" } = {}) {
   if (sectionId && test.sectionId !== sectionId) return false;
+  if (goal && goal !== "all" && !(test.goals || []).includes(goal)) return false;
   const shown = displayStatus(result.status);
   if (view === "todo" && !isWorkStatus(shown)) return false;
   if (view !== "all" && view !== "todo" && shown !== view) return false;
@@ -400,7 +401,7 @@ export function matchesQuery(test, result, { query = "", status = "all", priorit
   if (priority !== "all" && asString(test.priority) !== priority) return false;
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  const haystack = [test.id, test.title, test.description, test.where, test.url, test.given, test.when, test.then, test.sectionTitle, test.subsectionTitle]
+  const haystack = [test.id, test.title, test.description, test.where, test.url, test.given, test.when, test.then, test.purpose, test.failImpact, ...(test.goals || []), test.sectionTitle, test.subsectionTitle]
     .join(" ")
     .toLowerCase();
   return haystack.includes(needle);
@@ -518,6 +519,8 @@ export function formatFailureReport(test, result) {
   const value = normalizeResult(result);
   return [
     `${test.id} — ${test.title}`,
+    test.goals?.length ? `Goal: ${test.goals.join(", ")}` : "",
+    test.purpose ? `Purpose: ${test.purpose}` : "",
     `Severity: ${value.severity || "—"}`,
     `Expected: ${value.expectedResult || test.then || test.expectedResult || "—"}`,
     `Actual: ${value.actualResult || "—"}`,

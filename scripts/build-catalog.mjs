@@ -1,4 +1,5 @@
 import { writeFileSync } from "node:fs";
+import { CASE_META, RELEASE_GOALS, SECTION_META } from "./case-meta.mjs";
 
 function caseFrom([id, title, priority, where, url, given, when, then]) {
   return {
@@ -19,7 +20,8 @@ const catalog = {
   version: 1,
   title: "Offload Media – Cloud Storage Pro v6.2.0",
   description:
-    "Manual QA catalog (unit-test style). Mark Pass / Fail / Blocked / Skipped (use Skipped for N/A). If a Given precondition is missing, mark Blocked and say why. Fail severity: Blocker / Critical / Major / Minor. P0 first this release: Dashboard verification cards, Start Verification, Media Library statuses, delete-local safety, private downloads, WP-CLI, CSV reports. After opening Offload Media, use the plugin sidebar (not the WP left menu). Keep the browser console open (F12) and hard-refresh plugin admin pages with Ctrl+F5.",
+    "Manual QA catalog (unit-test style). Read Checking purpose first — it says what contract you are validating. Where / When are only how to observe it. Goals G1–G8 (and Env) map to release acceptance criteria. Mark Pass / Fail / Blocked / Skipped (use Skipped for N/A). If a Given precondition is missing, mark Blocked and say why. Fail severity: Blocker / Critical / Major / Minor. P0 first this release: Dashboard verification cards, Start Verification, Media Library statuses, delete-local safety, private downloads, WP-CLI, CSV reports. After opening Offload Media, use the plugin sidebar (not the WP left menu). Keep the browser console open (F12) and hard-refresh plugin admin pages with Ctrl+F5.",
+  goals: RELEASE_GOALS,
   pluginVersion: "6.2.0",
   howToMark: ["passed", "failed", "skipped", "blocked"],
   pageMap: [
@@ -372,8 +374,19 @@ const catalog = {
 
 const ids = [];
 for (const section of catalog.sections) {
+  const sectionMeta = SECTION_META[section.id];
+  if (!sectionMeta) throw new Error(`Missing section purpose/goals for ${section.id}`);
+  section.purpose = sectionMeta.purpose;
+  section.goals = sectionMeta.goals;
   for (const sub of section.subsections) {
-    for (const test of sub.testCases) ids.push(test.id);
+    for (const test of sub.testCases) {
+      const extra = CASE_META[test.id];
+      if (!extra?.purpose || !extra.goals?.length) {
+        throw new Error(`Missing purpose/goals for ${test.id}`);
+      }
+      Object.assign(test, extra);
+      ids.push(test.id);
+    }
   }
 }
 if (new Set(ids).size !== ids.length) {

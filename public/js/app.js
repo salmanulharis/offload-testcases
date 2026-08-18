@@ -37,6 +37,7 @@ const state = {
   priority: "all",
   view: "all",
   sectionId: "",
+  goal: "all",
   activeTestId: "",
   screen: "overview",
   runner: { mode: "section", sectionId: "", testId: "", autoNext: true, done: false },
@@ -262,6 +263,16 @@ function badge(status) {
   return `<span class="badge ${shown}">${STATUS_MARKS[shown]} ${escapeHtml(STATUS_LABELS[shown])}</span>`;
 }
 
+function goalChips(goals = []) {
+  return goals.map((goal) => `<span class="goal">${escapeHtml(goal)}</span>`).join("");
+}
+
+function specPurpose(test) {
+  return `${test.purpose ? `<div class="spec__row purpose"><dt>Checking purpose</dt><dd>${escapeHtml(test.purpose)}</dd></div>` : ""}
+        ${test.goals?.length ? `<div class="spec__row"><dt>Goal</dt><dd>${goalChips(test.goals)}</dd></div>` : ""}
+        ${test.failImpact ? `<div class="spec__row impact"><dt>Fail impact</dt><dd>${escapeHtml(test.failImpact)}</dd></div>` : ""}`;
+}
+
 function setSync(sync, message = "") {
   state.sync = sync;
   state.message = message;
@@ -333,6 +344,7 @@ function visibleTests() {
       priority: state.priority,
       view: state.view,
       sectionId: state.sectionId,
+      goal: state.goal,
     })
   );
 }
@@ -662,12 +674,15 @@ function renderOverview() {
     })
     .join("");
   if (els.extra) {
+    const goals = Array.isArray(state.definitions.goals) ? state.definitions.goals : [];
     els.extra.innerHTML = [
       ["in_progress", "In Progress"],
       ["skipped", "Skipped"],
       ["passed", "Passed"],
     ]
       .map(([value, label]) => `<button type="button" class="chip" data-view="${value}" aria-pressed="${state.view === value}">${label}</button>`)
+      .join("") + goals
+      .map((goal) => `<button type="button" class="chip" data-goal="${escapeHtml(goal.id)}" aria-pressed="${state.goal === goal.id}" title="${escapeHtml(goal.proves)}">${escapeHtml(goal.id)}</button>`)
       .join("");
   }
 
@@ -679,6 +694,7 @@ function renderOverview() {
   if (state.view !== "all") chips.push(["view", `Status: ${STATUS_LABELS[state.view] || state.view}`]);
   if (state.priority !== "all") chips.push(["priority", `Priority: ${state.priority}`]);
   if (state.sectionId) chips.push(["section", `Section: ${sectionLabel(state.sectionId)}`]);
+  if (state.goal !== "all") chips.push(["goal", `Goal: ${state.goal}`]);
   els.activeFilters.innerHTML = chips
     .map(([kind, label]) => `<button type="button" data-clear="${kind}">${escapeHtml(label)} ×</button>`)
     .join("");
@@ -814,6 +830,7 @@ function renderList() {
       const body = collapsed
         ? ""
         : `<div class="section__body">
+            ${section.purpose ? `<p class="section-purpose">${escapeHtml(section.purpose)}</p>` : ""}
             ${subsections
               .map((subsection) => {
                 const rows = tests.filter((test) => test.subsectionId === subsection.id);
@@ -830,7 +847,7 @@ function renderList() {
             <span class="chevron" aria-hidden="true">${collapsed ? "▶" : "▼"}</span>
             <span>
               <h3>${escapeHtml(sectionLabel(section))}</h3>
-              <p class="meta">${counts.resolved} / ${counts.total} · ${counts.passed} passed · ${counts.failed} failed · ${remainingCount(counts)} remaining</p>
+              <p class="meta">${counts.resolved} / ${counts.total} · ${counts.passed} passed · ${counts.failed} failed · ${remainingCount(counts)} remaining ${goalChips(section.goals || [])}</p>
             </span>
           </button>
           <div class="section__tools">
@@ -858,8 +875,9 @@ function renderRow(test) {
   return `<article class="test-row is-${status}${selected ? " is-active" : ""}" data-test="${escapeHtml(test.id)}">
     ${badge(status)}
     <span>
-      <span class="id">${escapeHtml(test.id)}${test.priority ? ` <span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""}</span>
+      <span class="id">${escapeHtml(test.id)}${test.priority ? ` <span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""} ${goalChips(test.goals)}</span>
       <h4>${escapeHtml(test.title)}</h4>
+      ${selected && test.purpose ? `<p class="purpose-line">${escapeHtml(test.purpose)}</p>` : ""}
     </span>
     ${selected ? `<button type="button" data-start-section="${escapeHtml(test.sectionId)}" data-test-id="${escapeHtml(test.id)}">Open test →</button>` : ""}
   </article>`;
@@ -880,9 +898,10 @@ function renderDetail() {
   els.detail.innerHTML = `
     <h2>${inThis ? "Current test" : "Execute"}</h2>
     <p class="id">${escapeHtml(test.id)}</p>
+    ${test.priority ? `<p><span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span> ${goalChips(test.goals)}</p>` : `<p>${goalChips(test.goals)}</p>`}
     <h3>${escapeHtml(test.title)}</h3>
+    ${test.purpose ? `<p class="purpose-line">${escapeHtml(test.purpose)}</p>` : ""}
     <p class="muted">${escapeHtml(sectionLabel(test.sectionId))}${test.subsectionTitle ? ` → ${escapeHtml(test.subsectionTitle)}` : ""}</p>
-    ${test.priority ? `<p><span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span></p>` : ""}
     <p>${badge(status)}</p>
     <button type="button" class="primary" data-start-section="${escapeHtml(test.sectionId)}" data-test-id="${escapeHtml(test.id)}">${inThis ? "Open test →" : "Start this test →"}</button>
     <p><button type="button" data-copy-link="${escapeHtml(test.id)}">Copy link</button></p>
@@ -941,10 +960,11 @@ function renderRunner() {
       <p class="runner__meta">Test ${index + 1} of ${queue.length} · ${counts.resolvedPercent}% complete</p>
       <div class="bar"><span style="width:${counts.resolvedPercent}%"></span></div>
       <p class="runner__stats">✓ ${counts.passed} passed · ✕ ${counts.failed} failed · ! ${counts.blocked} blocked · ${remainingCount(counts)} remaining</p>
-      <p class="id">${escapeHtml(test.id)} ${test.priority ? `<span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""} ${badge(status)}</p>
+      <p class="id">${escapeHtml(test.id)} ${test.priority ? `<span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""} ${goalChips(test.goals)} ${badge(status)}</p>
       <h2>${escapeHtml(test.title)}</h2>
       <p class="muted">${escapeHtml(test.sectionTitle)}${test.subsectionTitle ? ` → ${escapeHtml(test.subsectionTitle)}` : ""}</p>
       <dl class="spec">
+        ${specPurpose(test)}
         ${test.where ? `<div class="spec__row"><dt>Where</dt><dd>${escapeHtml(test.where)}</dd></div>` : ""}
         ${test.url ? `<div class="spec__row"><dt>URL</dt><dd><code>${escapeHtml(test.url)}</code></dd></div>` : ""}
         ${test.given ? `<div class="spec__row given"><dt>Given</dt><dd>${escapeHtml(test.given)}</dd></div>` : ""}
@@ -1182,7 +1202,12 @@ els.views.addEventListener("click", (event) => {
 els.counts.addEventListener("click", handleViewClick);
 els.extra?.addEventListener("click", (event) => {
   const view = event.target.closest("[data-view]");
+  const goal = event.target.closest("[data-goal]");
   if (view) setView(state.view === view.dataset.view ? "all" : view.dataset.view);
+  if (goal) {
+    state.goal = state.goal === goal.dataset.goal ? "all" : goal.dataset.goal;
+    render();
+  }
 });
 
 els.quick.addEventListener("click", (event) => {
@@ -1193,6 +1218,7 @@ els.quick.addEventListener("click", (event) => {
       state.view = "all";
       state.priority = "all";
       state.sectionId = "";
+      state.goal = "all";
       render();
       return;
     }
@@ -1214,6 +1240,7 @@ els.activeFilters.addEventListener("click", (event) => {
   if (button.dataset.clear === "view") state.view = "all";
   if (button.dataset.clear === "priority") state.priority = "all";
   if (button.dataset.clear === "section") state.sectionId = "";
+  if (button.dataset.clear === "goal") state.goal = "all";
   render();
 });
 

@@ -1,7 +1,63 @@
 {
   "version": 1,
   "title": "Offload Media – Cloud Storage Pro v6.2.0",
-  "description": "Manual QA catalog (unit-test style). Mark Pass / Fail / Blocked / Skipped (use Skipped for N/A). If a Given precondition is missing, mark Blocked and say why. Fail severity: Blocker / Critical / Major / Minor. P0 first this release: Dashboard verification cards, Start Verification, Media Library statuses, delete-local safety, private downloads, WP-CLI, CSV reports. After opening Offload Media, use the plugin sidebar (not the WP left menu). Keep the browser console open (F12) and hard-refresh plugin admin pages with Ctrl+F5.",
+  "description": "Manual QA catalog (unit-test style). Read Checking purpose first — it says what contract you are validating. Where / When are only how to observe it. Goals G1–G8 (and Env) map to release acceptance criteria. Mark Pass / Fail / Blocked / Skipped (use Skipped for N/A). If a Given precondition is missing, mark Blocked and say why. Fail severity: Blocker / Critical / Major / Minor. P0 first this release: Dashboard verification cards, Start Verification, Media Library statuses, delete-local safety, private downloads, WP-CLI, CSV reports. After opening Offload Media, use the plugin sidebar (not the WP left menu). Keep the browser console open (F12) and hard-refresh plugin admin pages with Ctrl+F5.",
+  "goals": [
+    {
+      "id": "G1",
+      "title": "Single lifecycle truth",
+      "proves": "One lifecycle state per attachment across all surfaces",
+      "sections": "Dashboard, Media Library, CLI, CSV"
+    },
+    {
+      "id": "G2",
+      "title": "Verification detects cloud reality",
+      "proves": "Missing object after verify → Failed, not healthy offloaded",
+      "sections": "Verification, Dashboard Failed"
+    },
+    {
+      "id": "G3",
+      "title": "URLs follow lifecycle",
+      "proves": "No broken cloud URL for Failed when local exists; private uses signed URLs",
+      "sections": "Media Library, front-end, Woo"
+    },
+    {
+      "id": "G4",
+      "title": "Verification jobs are durable",
+      "proves": "Progress, pause/resume, survive navigation, no duplicate jobs",
+      "sections": "Bulk Operations"
+    },
+    {
+      "id": "G5",
+      "title": "Delete-local cannot bypass safety",
+      "proves": "Unverified offloaded files keep local copies when safety is ON",
+      "sections": "Delete from Server, CLI delete-local"
+    },
+    {
+      "id": "G6",
+      "title": "Dashboard + CSVs are operational truth",
+      "proves": "Cards and exports reflect lifecycle, not legacy counters alone",
+      "sections": "Dashboard reports, CSV"
+    },
+    {
+      "id": "G7",
+      "title": "File Manager bulk ops are scoped",
+      "proves": "Only selected keys, complete honestly, report partial failures",
+      "sections": "File Manager"
+    },
+    {
+      "id": "G8",
+      "title": "WP-CLI matches admin semantics",
+      "proves": "Same lifecycle counts and safety rules as the UI",
+      "sections": "WP-CLI"
+    },
+    {
+      "id": "Env",
+      "title": "Environment / operator experience",
+      "proves": "Safe staging, correct build, screens load, clear errors",
+      "sections": "Smoke, Troubleshoot, polish"
+    }
+  ],
   "pluginVersion": "6.2.0",
   "howToMark": [
     "passed",
@@ -81,7 +137,11 @@
               "when": "Confirm this is staging or you have a DB + wp-content/uploads backup.",
               "then": "You can restore if a test goes wrong. Do not run mass remove on production.",
               "description": "Given: You are about to test delete-local / remove-from-cloud.\nWhen: Confirm this is staging or you have a DB + wp-content/uploads backup.",
-              "expectedResult": "You can restore if a test goes wrong. Do not run mass remove on production."
+              "expectedResult": "You can restore if a test goes wrong. Do not run mass remove on production.",
+              "purpose": "Destructive tests (delete-local, remove-from-cloud, bucket delete) must not run on production without a restore path — prevents irreversible media loss.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ENV-02",
@@ -93,7 +153,11 @@
               "when": "Find Offload Media - Cloud Storage Pro.",
               "then": "Version is 6.2.0. Plugin is Active.",
               "description": "When: Find Offload Media - Cloud Storage Pro.",
-              "expectedResult": "Version is 6.2.0. Plugin is Active."
+              "expectedResult": "Version is 6.2.0. Plugin is Active.",
+              "purpose": "QA results apply to the intended release; wrong version invalidates lifecycle/verification findings.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ENV-03",
@@ -105,7 +169,11 @@
               "when": "Open Dashboard.",
               "then": "You see Dashboard / Storage Provider / Bulk Operations. If you only see License, activate a valid license first (Blocked).",
               "description": "When: Open Dashboard.",
-              "expectedResult": "You see Dashboard / Storage Provider / Bulk Operations. If you only see License, activate a valid license first (Blocked)."
+              "expectedResult": "You see Dashboard / Storage Provider / Bulk Operations. If you only see License, activate a valid license first (Blocked).",
+              "purpose": "License gate must not block access to screens needed for P0 testing.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ENV-04",
@@ -117,7 +185,11 @@
               "when": "Confirm provider, credentials saved, connection verified, bucket selected.",
               "then": "Header shows connected provider + bucket. Dashboard later says Connected to {provider}.",
               "description": "When: Confirm provider, credentials saved, connection verified, bucket selected.",
-              "expectedResult": "Header shows connected provider + bucket. Dashboard later says Connected to {provider}."
+              "expectedResult": "Header shows connected provider + bucket. Dashboard later says Connected to {provider}.",
+              "purpose": "All cloud, verification, and File Manager tests require a live provider + bucket — without this, downstream cases are Blocked not Fail.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ENV-05",
@@ -129,7 +201,11 @@
               "when": "Run `wp acoofmp status`.",
               "then": "Prints Provider/bucket and counts (Total, Eligible, Offloaded, Verified, Awaiting Verification, Not Offloaded, Failed, Retrying, Local Removed). No PHP fatal.",
               "description": "Given: WP-CLI is available, or mark Skipped / N/A.\nWhen: Run `wp acoofmp status`.",
-              "expectedResult": "Prints Provider/bucket and counts (Total, Eligible, Offloaded, Verified, Awaiting Verification, Not Offloaded, Failed, Retrying, Local Removed). No PHP fatal."
+              "expectedResult": "Prints Provider/bucket and counts (Total, Eligible, Offloaded, Verified, Awaiting Verification, Not Offloaded, Failed, Retrying, Local Removed). No PHP fatal.",
+              "purpose": "CLI exposes the same lifecycle count model as Dashboard (G1/G8) and does not fatal on a normal site.",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-ENV-06",
@@ -141,7 +217,11 @@
               "when": "Hard-refresh (Ctrl+F5), click Dashboard, Bulk Operations, Media Library.",
               "then": "Console has no error Identifier 'wp' has already been declared.",
               "description": "When: Hard-refresh (Ctrl+F5), click Dashboard, Bulk Operations, Media Library.",
-              "expectedResult": "Console has no error Identifier 'wp' has already been declared."
+              "expectedResult": "Console has no error Identifier 'wp' has already been declared.",
+              "purpose": "Admin React bundle must not break WordPress globals — otherwise Dashboard, Bulk Ops, and Media Library JS fail silently or partially.",
+              "goals": [
+                "Env"
+              ]
             }
           ]
         },
@@ -160,7 +240,11 @@
               "when": "Upload a small JPG.",
               "then": "Lifecycle is Offloaded (not yet Verified). Note the attachment ID.",
               "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a small JPG.",
-              "expectedResult": "Lifecycle is Offloaded (not yet Verified). Note the attachment ID."
+              "expectedResult": "Lifecycle is Offloaded (not yet Verified). Note the attachment ID.",
+              "purpose": "Named fixtures let every case refer to the same attachment IDs — required for cross-surface consistency checks (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "SETUP-NEW-PDF",
@@ -172,7 +256,11 @@
               "when": "Upload a PDF the same way.",
               "then": "Lifecycle is Offloaded. Note the attachment ID.",
               "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a PDF the same way.",
-              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID."
+              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID.",
+              "purpose": "Named Offloaded PDF fixture for later lifecycle and delivery cases (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "SETUP-NEW-LARGE",
@@ -184,7 +272,12 @@
               "when": "Upload a larger file (~5–20 MB).",
               "then": "Lifecycle is Offloaded. Note the attachment ID.",
               "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a larger file (~5–20 MB).",
-              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID."
+              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID.",
+              "purpose": "Named larger Offloaded file so pause/resume and progress cases do not finish instantly (G4).",
+              "goals": [
+                "G1",
+                "G4"
+              ]
             },
             {
               "id": "SETUP-LOCAL-ONLY",
@@ -196,7 +289,11 @@
               "when": "Upload a file that stays local only.",
               "then": "Lifecycle is Not offloaded. Note the attachment ID.",
               "description": "Given: Copy-to-bucket is OFF, or the file is never synced.\nWhen: Upload a file that stays local only.",
-              "expectedResult": "Lifecycle is Not offloaded. Note the attachment ID."
+              "expectedResult": "Lifecycle is Not offloaded. Note the attachment ID.",
+              "purpose": "Named local-only file so sync → Offloaded transitions can be observed on a known ID (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "SETUP-LEGACY",
@@ -208,7 +305,11 @@
               "when": "Find that file and note its ID.",
               "then": "Lifecycle is Offloaded. Keep it for TC-ML-10.",
               "description": "Given: A file that was already offloaded before this 6.2.0 update.\nWhen: Find that file and note its ID.",
-              "expectedResult": "Lifecycle is Offloaded. Keep it for TC-ML-10."
+              "expectedResult": "Lifecycle is Offloaded. Keep it for TC-ML-10.",
+              "purpose": "Identify a pre-6.2.0 offload so backward-compatible Offloaded counting can be checked (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "SETUP-TO-FAIL",
@@ -220,7 +321,11 @@
               "when": "Delete that object in File Manager / bucket console.",
               "then": "WP still shows Offloaded until you verify — then it should become Failed.",
               "description": "Given: A file is offloaded in WordPress.\nWhen: Delete that object in File Manager / bucket console.",
-              "expectedResult": "WP still shows Offloaded until you verify — then it should become Failed."
+              "expectedResult": "WP still shows Offloaded until you verify — then it should become Failed.",
+              "purpose": "Create an offloaded WP attachment whose cloud object is missing — required for G2 Failed-after-verify.",
+              "goals": [
+                "G2"
+              ]
             },
             {
               "id": "SETUP-TO-VERIFY",
@@ -232,7 +337,11 @@
               "when": "Note the attachment ID.",
               "then": "Lifecycle is Offloaded / Awaiting verification.",
               "description": "Given: Any offloaded file you have not verified yet.\nWhen: Note the attachment ID.",
-              "expectedResult": "Lifecycle is Offloaded / Awaiting verification."
+              "expectedResult": "Lifecycle is Offloaded / Awaiting verification.",
+              "purpose": "Identify an offloaded unverified file for awaiting-verification and delete-local safety cases (G5).",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "SETUP-VERIFIED-1",
@@ -244,7 +353,11 @@
               "when": "Offload if needed, then run Start Verification and wait.",
               "then": "Lifecycle is Verified. Note the attachment ID.",
               "description": "Given: An offloaded unverified file exists.\nWhen: Offload if needed, then run Start Verification and wait.",
-              "expectedResult": "Lifecycle is Verified. Note the attachment ID."
+              "expectedResult": "Lifecycle is Verified. Note the attachment ID.",
+              "purpose": "Produce a Verified attachment so post-verify lifecycle and allowed delete-local cases have a known ID (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "SETUP-LOCAL-GONE",
@@ -256,7 +369,11 @@
               "when": "Verify, then Delete from Server.",
               "then": "Lifecycle is Local Deleted. Note the attachment ID.",
               "description": "Given: File is Verified. Require Verification Before Delete Local is ON.\nWhen: Verify, then Delete from Server.",
-              "expectedResult": "Lifecycle is Local Deleted. Note the attachment ID."
+              "expectedResult": "Lifecycle is Local Deleted. Note the attachment ID.",
+              "purpose": "Produce a Local Deleted attachment to test download/restore after safe delete-local (G5).",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "SETUP-PRIVATE-DL",
@@ -268,7 +385,11 @@
               "when": "Set Cloud Access = Private.",
               "then": "Lifecycle is Offloaded + Private. Note the attachment ID.",
               "description": "Given: Woo/EDD downloadable file (ZIP/PDF) is offloaded, or mark later cases N/A.\nWhen: Set Cloud Access = Private.",
-              "expectedResult": "Lifecycle is Offloaded + Private. Note the attachment ID."
+              "expectedResult": "Lifecycle is Offloaded + Private. Note the attachment ID.",
+              "purpose": "Produce a private offloaded downloadable file for Woo/EDD signed URL cases (G3).",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "SETUP-WEBP",
@@ -280,10 +401,18 @@
               "when": "Upload or convert an image as WebP if that path is in scope.",
               "then": "Fixture exists, or mark Skipped / N/A.",
               "description": "Given: Optional image you will convert/offload as WebP.\nWhen: Upload or convert an image as WebP if that path is in scope.",
-              "expectedResult": "Fixture exists, or mark Skipped / N/A."
+              "expectedResult": "Fixture exists, or mark Skipped / N/A.",
+              "purpose": "Optional WebP image fixture if conversion/offload of that format is in scope.",
+              "goals": [
+                "Env"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Confirm the environment is safe, the correct build is under test, and admin/CLI surfaces load before lifecycle or destructive tests.",
+      "goals": [
+        "Env"
       ]
     },
     {
@@ -305,7 +434,12 @@
               "when": "Open the page with console open.",
               "then": "Title Dashboard. No console errors. You see connection health plus media cards.",
               "description": "Given: License valid, provider configured.\nWhen: Open the page with console open.",
-              "expectedResult": "Title Dashboard. No console errors. You see connection health plus media cards."
+              "expectedResult": "Title Dashboard. No console errors. You see connection health plus media cards.",
+              "purpose": "Primary admin entry point must load without JS errors so operators can see connection health and media summary.",
+              "goals": [
+                "G6"
+              ],
+              "failImpact": "Operators cannot assess offload health or start verification from Dashboard."
             },
             {
               "id": "TC-DASH-02",
@@ -317,7 +451,13 @@
               "when": "Look at the eight cards.",
               "then": "You see exactly: 1. Library media — In WordPress Media Library; 2. Eligible to offload; 3. Offloaded — % of eligible; 4. Not offloaded — Remaining eligible to sync; 5. Local removed — Removed from server; 6. Verified — Cloud existence confirmed; 7. Awaiting verification — Offloaded, not yet verified; 8. Failed — Lifecycle / verify errors (or N retrying). Numbers feel roughly right vs Media Library (small lag is OK).",
               "description": "When: Look at the eight cards.",
-              "expectedResult": "You see exactly: 1. Library media — In WordPress Media Library; 2. Eligible to offload; 3. Offloaded — % of eligible; 4. Not offloaded — Remaining eligible to sync; 5. Local removed — Removed from server; 6. Verified — Cloud existence confirmed; 7. Awaiting verification — Offloaded, not yet verified; 8. Failed — Lifecycle / verify errors (or N retrying). Numbers feel roughly right vs Media Library (small lag is OK)."
+              "expectedResult": "You see exactly: 1. Library media — In WordPress Media Library; 2. Eligible to offload; 3. Offloaded — % of eligible; 4. Not offloaded — Remaining eligible to sync; 5. Local removed — Removed from server; 6. Verified — Cloud existence confirmed; 7. Awaiting verification — Offloaded, not yet verified; 8. Failed — Lifecycle / verify errors (or N retrying). Numbers feel roughly right vs Media Library (small lag is OK).",
+              "purpose": "Each card must map to a distinct lifecycle bucket so totals are interpretable (offloaded ≠ verified ≠ failed).",
+              "goals": [
+                "G1",
+                "G6"
+              ],
+              "failImpact": "Misleading counts (e.g. 27/27 offloaded while items are Failed) drive wrong delete-local decisions."
             },
             {
               "id": "TC-DASH-03",
@@ -329,7 +469,12 @@
               "when": "Read the banner. Click Verify Offloads.",
               "then": "Banner text is like: “N offloaded file(s) are awaiting cloud verification before local files can be safely removed.” Clicking Verify Offloads takes you to Bulk Operations (#bulk-operations), not a dead end. You can see Start Verification on that page.",
               "description": "Given: Some files are Offloaded but not Verified (Awaiting verification > 0).\nWhen: Read the banner. Click Verify Offloads.",
-              "expectedResult": "Banner text is like: “N offloaded file(s) are awaiting cloud verification before local files can be safely removed.” Clicking Verify Offloads takes you to Bulk Operations (#bulk-operations), not a dead end. You can see Start Verification on that page."
+              "expectedResult": "Banner text is like: “N offloaded file(s) are awaiting cloud verification before local files can be safely removed.” Clicking Verify Offloads takes you to Bulk Operations (#bulk-operations), not a dead end. You can see Start Verification on that page.",
+              "purpose": "Operators must be warned when local delete is unsafe and routed to Start Verification — closes the gap between “offloaded” and “confirmed on cloud”.",
+              "goals": [
+                "G4"
+              ],
+              "failImpact": "Users delete locals without knowing cloud was never verified."
             },
             {
               "id": "TC-DASH-04",
@@ -341,7 +486,11 @@
               "when": "Open Dashboard with storage not configured.",
               "then": "Banner: “Cloud storage is not configured yet…” Button Connect Provider goes to Storage Provider.",
               "description": "Given: You can temporarily disconnect / use a site without provider (or a staging clone). Skip if you cannot safely disconnect.\nWhen: Open Dashboard with storage not configured.",
-              "expectedResult": "Banner: “Cloud storage is not configured yet…” Button Connect Provider goes to Storage Provider."
+              "expectedResult": "Banner: “Cloud storage is not configured yet…” Button Connect Provider goes to Storage Provider.",
+              "purpose": "Empty/unconfigured state must be actionable — not a blank or broken Dashboard.",
+              "goals": [
+                "G6"
+              ]
             },
             {
               "id": "TC-DASH-05",
@@ -353,7 +502,11 @@
               "when": "Look at the attention banner / Bulk Operations block.",
               "then": "Message about files not yet offloaded. Button Open Bulk Operations (or similar) goes to #bulk-operations.",
               "description": "Given: Not offloaded > 0 and no job running.\nWhen: Look at the attention banner / Bulk Operations block.",
-              "expectedResult": "Message about files not yet offloaded. Button Open Bulk Operations (or similar) goes to #bulk-operations."
+              "expectedResult": "Message about files not yet offloaded. Button Open Bulk Operations (or similar) goes to #bulk-operations.",
+              "purpose": "Operators with unsynced eligible media must be routed to bulk sync, not left without guidance.",
+              "goals": [
+                "G6"
+              ]
             },
             {
               "id": "TC-DASH-06",
@@ -365,7 +518,13 @@
               "when": "Click Export failed CSV.",
               "then": "Browser downloads acoofmp-failed-media.csv. File opens in Excel/Sheets. Columns include: attachment_id, title, state, last_error, verified_at.",
               "description": "When: Click Export failed CSV.",
-              "expectedResult": "Browser downloads acoofmp-failed-media.csv. File opens in Excel/Sheets. Columns include: attachment_id, title, state, last_error, verified_at."
+              "expectedResult": "Browser downloads acoofmp-failed-media.csv. File opens in Excel/Sheets. Columns include: attachment_id, title, state, last_error, verified_at.",
+              "purpose": "Support/ops need an exportable list of failed lifecycle items with errors — must match Failed card semantics (G2, G6).",
+              "goals": [
+                "G2",
+                "G6"
+              ],
+              "failImpact": "Failed items invisible to support; manual DB hunting required."
             },
             {
               "id": "TC-DASH-07",
@@ -377,10 +536,20 @@
               "when": "Click Export verification CSV.",
               "then": "Downloads acoofmp-verification-report.csv. Columns include: attachment_id, title, state, verification_status, verified_at, size_ok, etag_ok, url_ok, reason, code, object_key, provider, http_status, safe_to_remove_local.",
               "description": "When: Click Export verification CSV.",
-              "expectedResult": "Downloads acoofmp-verification-report.csv. Columns include: attachment_id, title, state, verification_status, verified_at, size_ok, etag_ok, url_ok, reason, code, object_key, provider, http_status, safe_to_remove_local."
+              "expectedResult": "Downloads acoofmp-verification-report.csv. Columns include: attachment_id, title, state, verification_status, verified_at, size_ok, etag_ok, url_ok, reason, code, object_key, provider, http_status, safe_to_remove_local.",
+              "purpose": "Verification audit export must include per-check dimensions (size_ok, safe_to_remove_local, etc.) for compliance and debugging.",
+              "goals": [
+                "G6"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Dashboard is the operator’s summary of library health. Cards and exports must reflect lifecycle truth (G1, G6), not legacy sync meta alone, and must guide users toward verification when needed (G4).",
+      "goals": [
+        "G1",
+        "G4",
+        "G6"
       ]
     },
     {
@@ -402,7 +571,12 @@
               "when": "Click Start Verification.",
               "then": "Toast/notice: verification job started (or already running). A job row appears with Operation Verify offloads. Status moves waiting/pending → processing. Live line Verifying cloud objects can appear above the buttons. Progress shows like N / M verified (x%) — numbers move during the run, not only at the end.",
               "description": "Given: At least one offloaded, unverified file. No Remove-from-cloud job running.\nWhen: Click Start Verification.",
-              "expectedResult": "Toast/notice: verification job started (or already running). A job row appears with Operation Verify offloads. Status moves waiting/pending → processing. Live line Verifying cloud objects can appear above the buttons. Progress shows like N / M verified (x%) — numbers move during the run, not only at the end."
+              "expectedResult": "Toast/notice: verification job started (or already running). A job row appears with Operation Verify offloads. Status moves waiting/pending → processing. Live line Verifying cloud objects can appear above the buttons. Progress shows like N / M verified (x%) — numbers move during the run, not only at the end.",
+              "purpose": "Clicking Start Verification must enqueue work with visible progress — not a no-op or fake success toast.",
+              "goals": [
+                "G4"
+              ],
+              "failImpact": "Metadata never updates; operators think verification ran."
             },
             {
               "id": "TC-VER-02",
@@ -414,7 +588,12 @@
               "when": "Start Verification, then close the tab or go to Posts. Wait ~30–60s. Reopen Bulk Operations.",
               "then": "Job is still processing or completed. It did not die with the browser.",
               "description": "Given: A verification job can be started.\nWhen: Start Verification, then close the tab or go to Posts. Wait ~30–60s. Reopen Bulk Operations.",
-              "expectedResult": "Job is still processing or completed. It did not die with the browser."
+              "expectedResult": "Job is still processing or completed. It did not die with the browser.",
+              "purpose": "Verification must complete server-side — operators close the tab during long runs.",
+              "goals": [
+                "G4"
+              ],
+              "failImpact": "Large libraries never finish verify on hosts without reliable loopback workers."
             },
             {
               "id": "TC-VER-03",
@@ -426,7 +605,11 @@
               "when": "1. Click Pause → status paused, progress bar stops chewing new files (in-flight items may finish). 2. Click Resume → continues from remaining items. 3. On another run (or remaining items): click Cancel → remaining pending items cancelled; cancelled items are not verified afterward.",
               "then": "Each control matches the status in the table. Cancelled files stay Offloaded (not Verified) unless they already succeeded.",
               "description": "Given: A verification job with enough files that it does not finish instantly (use a larger library or pause quickly).\nWhen: 1. Click Pause → status paused, progress bar stops chewing new files (in-flight items may finish). 2. Click Resume → continues from remaining items. 3. On another run (or remaining items): click Cancel → remaining pending items cancelled; cancelled items are not verified afterward.",
-              "expectedResult": "Each control matches the status in the table. Cancelled files stay Offloaded (not Verified) unless they already succeeded."
+              "expectedResult": "Each control matches the status in the table. Cancelled files stay Offloaded (not Verified) unless they already succeeded.",
+              "purpose": "Long verify jobs must be operable — pause for maintenance, cancel mistaken runs without corrupting state.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-VER-04",
@@ -438,7 +621,12 @@
               "when": "Open a file that was verified. Refresh Dashboard.",
               "then": "Lifecycle = Verified. Dashboard Verified count went up. Awaiting verification went down. If awaiting is now 0, the Dashboard warning improves or clears.",
               "description": "Given: A file was verified (VERIFIED-1).\nWhen: Open a file that was verified. Refresh Dashboard.",
-              "expectedResult": "Lifecycle = Verified. Dashboard Verified count went up. Awaiting verification went down. If awaiting is now 0, the Dashboard warning improves or clears."
+              "expectedResult": "Lifecycle = Verified. Dashboard Verified count went up. Awaiting verification went down. If awaiting is now 0, the Dashboard warning improves or clears.",
+              "purpose": "Successful verify must propagate lifecycle Verified to Media Library and Dashboard counts in sync (G1).",
+              "goals": [
+                "G1"
+              ],
+              "failImpact": "Verified in job table but still “awaiting verification” in UI."
             },
             {
               "id": "TC-VER-05",
@@ -450,7 +638,14 @@
               "when": "Run Start Verification. When done, open Media Library details for that file. Optionally View failures on the job.",
               "then": "Lifecycle = Failed. You can see a plain-language reason (missing object, size mismatch, URL check, etc.). Dashboard Failed > 0. Verification CSV reason / code matches that file. Site still loads other media; one failed verify does not take the site down.",
               "description": "Given: File TO-FAIL is offloaded in WP, but you deleted the cloud object (or replaced it with a different-size file).\nWhen: Run Start Verification. When done, open Media Library details for that file. Optionally View failures on the job.",
-              "expectedResult": "Lifecycle = Failed. You can see a plain-language reason (missing object, size mismatch, URL check, etc.). Dashboard Failed > 0. Verification CSV reason / code matches that file. Site still loads other media; one failed verify does not take the site down."
+              "expectedResult": "Lifecycle = Failed. You can see a plain-language reason (missing object, size mismatch, URL check, etc.). Dashboard Failed > 0. Verification CSV reason / code matches that file. Site still loads other media; one failed verify does not take the site down.",
+              "purpose": "Core v6.2.0 regression. When cloud object is gone, verify must set Failed everywhere — not keep false “healthy offloaded” counts or broken cloud URLs (G2, G1, G3).",
+              "goals": [
+                "G2",
+                "G1",
+                "G3"
+              ],
+              "failImpact": "Dashboard shows 27/27 offloaded; Media Library not bannered; site serves 404 cloud URL — exact pre-release bug."
             },
             {
               "id": "TC-VER-06",
@@ -462,7 +657,11 @@
               "when": "Look at Start Verification.",
               "then": "Button is disabled / reads Blocked by Remove job. Tooltip explains wait. No second conflicting job is created.",
               "description": "Given: A Start Durable Remove job is processing or paused.\nWhen: Look at Start Verification.",
-              "expectedResult": "Button is disabled / reads Blocked by Remove job. Tooltip explains wait. No second conflicting job is created."
+              "expectedResult": "Button is disabled / reads Blocked by Remove job. Tooltip explains wait. No second conflicting job is created.",
+              "purpose": "Concurrent Remove + Verify must not corrupt metadata or race the same attachments.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-VER-07",
@@ -474,7 +673,11 @@
               "when": "Click the button twice quickly.",
               "then": "One job only. Second click says verification is already running (or already active but paused — resume from the job list).",
               "description": "When: Click the button twice quickly.",
-              "expectedResult": "One job only. Second click says verification is already running (or already active but paused — resume from the job list)."
+              "expectedResult": "One job only. Second click says verification is already running (or already active but paused — resume from the job list).",
+              "purpose": "Accidental double-click must not spawn duplicate verify jobs processing the same library twice.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-VER-08",
@@ -486,10 +689,19 @@
               "when": "Look at Start Durable Remove.",
               "then": "Disabled / Blocked by Verify job. Confirm dialog for remove is not the path to a second job.",
               "description": "Given: Verification job active.\nWhen: Look at Start Durable Remove.",
-              "expectedResult": "Disabled / Blocked by Verify job. Confirm dialog for remove is not the path to a second job."
+              "expectedResult": "Disabled / Blocked by Verify job. Confirm dialog for remove is not the path to a second job.",
+              "purpose": "Mutex in reverse direction — Remove cannot start during active Verify.",
+              "goals": [
+                "G4"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Start Verification must run a real durable job that updates lifecycle metadata, survives navigation, and reports failures honestly (G4). Critical regression: jobs stuck at 0% or duplicate jobs.",
+      "goals": [
+        "G2",
+        "G4"
       ]
     },
     {
@@ -511,7 +723,11 @@
               "when": "Scan the Offload Status column.",
               "then": "You see lifecycle labels, including: Not offloaded, Offloaded, Verified, Failed, Local deleted (as applicable). No PHP notices on the page.",
               "description": "When: Scan the Offload Status column.",
-              "expectedResult": "You see lifecycle labels, including: Not offloaded, Offloaded, Verified, Failed, Local deleted (as applicable). No PHP notices on the page."
+              "expectedResult": "You see lifecycle labels, including: Not offloaded, Offloaded, Verified, Failed, Local deleted (as applicable). No PHP notices on the page.",
+              "purpose": "List view must show lifecycle labels editors rely on for bulk decisions.",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-02",
@@ -523,7 +739,11 @@
               "when": "Hover the small badge on the thumbnail.",
               "then": "Badge short text is Offloaded. Tooltip shows the specific state (Offloaded / Verified / Local Deleted). Badge does not appear on purely local (not offloaded) files.",
               "description": "Given: Files in Offloaded / Verified / Local Deleted.\nWhen: Hover the small badge on the thumbnail.",
-              "expectedResult": "Badge short text is Offloaded. Tooltip shows the specific state (Offloaded / Verified / Local Deleted). Badge does not appear on purely local (not offloaded) files."
+              "expectedResult": "Badge short text is Offloaded. Tooltip shows the specific state (Offloaded / Verified / Local Deleted). Badge does not appear on purely local (not offloaded) files.",
+              "purpose": "Grid badge must match list lifecycle — editors use grid for visual scanning.",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-03",
@@ -535,7 +755,11 @@
               "when": "Find field Lifecycle.",
               "then": "Same state as the list/grid (Not offloaded / Offloaded / Verified / Failed / Local deleted). Offload Status legacy line still makes sense (Offloaded to Cloud / Stored on Server / Deleted from Server).",
               "description": "When: Find field Lifecycle.",
-              "expectedResult": "Same state as the list/grid (Not offloaded / Offloaded / Verified / Failed / Local deleted). Offload Status legacy line still makes sense (Offloaded to Cloud / Stored on Server / Deleted from Server)."
+              "expectedResult": "Same state as the list/grid (Not offloaded / Offloaded / Verified / Failed / Local deleted). Offload Status legacy line still makes sense (Offloaded to Cloud / Stored on Server / Deleted from Server).",
+              "purpose": "Attachment details are the authoritative per-file view — must match list/grid for same ID (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-04",
@@ -547,7 +771,12 @@
               "when": "Sync that file to cloud. Refresh Media Library.",
               "then": "Lifecycle = Offloaded. Offload Actions show Remove from Cloud and Delete from Server. File loads on the front of the site from cloud/CDN.",
               "description": "Given: LOCAL-ONLY exists or a file can be synced.\nWhen: Sync that file to cloud. Refresh Media Library.",
-              "expectedResult": "Lifecycle = Offloaded. Offload Actions show Remove from Cloud and Delete from Server. File loads on the front of the site from cloud/CDN."
+              "expectedResult": "Lifecycle = Offloaded. Offload Actions show Remove from Cloud and Delete from Server. File loads on the front of the site from cloud/CDN.",
+              "purpose": "New offload transitions lifecycle to Offloaded and front-end can load from cloud (G1, G3).",
+              "goals": [
+                "G1",
+                "G3"
+              ]
             },
             {
               "id": "TC-ML-05",
@@ -559,7 +788,11 @@
               "when": "Confirm after TC-VER-04.",
               "then": "Lifecycle = Verified. Filter Verified includes this file.",
               "description": "Given: After TC-VER-04.\nWhen: Confirm after TC-VER-04.",
-              "expectedResult": "Lifecycle = Verified. Filter Verified includes this file."
+              "expectedResult": "Lifecycle = Verified. Filter Verified includes this file.",
+              "purpose": "Post-verify lifecycle label and filter must reflect Verified, not stuck on Offloaded.",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-06",
@@ -571,7 +804,12 @@
               "when": "Click Delete from Server. Confirm. Refresh.",
               "then": "Lifecycle = Local deleted (or Local Deleted). Offload Status also says Deleted from Server. Front of site still shows the image from the cloud. Local file is gone from wp-content/uploads.",
               "description": "Given: Safety setting ON (see TC-DEL-*).\nWhen: Click Delete from Server. Confirm. Refresh.",
-              "expectedResult": "Lifecycle = Local deleted (or Local Deleted). Offload Status also says Deleted from Server. Front of site still shows the image from the cloud. Local file is gone from wp-content/uploads."
+              "expectedResult": "Lifecycle = Local deleted (or Local Deleted). Offload Status also says Deleted from Server. Front of site still shows the image from the cloud. Local file is gone from wp-content/uploads.",
+              "purpose": "After safe local delete, lifecycle shows local removed while site still serves from cloud (G5, G1).",
+              "goals": [
+                "G5",
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-07",
@@ -583,7 +821,11 @@
               "when": "Remove from cloud. Refresh.",
               "then": "Lifecycle = Not offloaded. Filter Not Offloaded includes it. Front of site uses local file if present.",
               "description": "Given: A disposable offloaded test file exists.\nWhen: Remove from cloud. Refresh.",
-              "expectedResult": "Lifecycle = Not offloaded. Filter Not Offloaded includes it. Front of site uses local file if present."
+              "expectedResult": "Lifecycle = Not offloaded. Filter Not Offloaded includes it. Front of site uses local file if present.",
+              "purpose": "Remove from cloud must reset lifecycle to not offloaded when object is gone from bucket.",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-08",
@@ -595,7 +837,11 @@
               "when": "Choose each value and click Filter. Spot-check 3 files per view.",
               "then": "All cloud statuses = mixed. Offloaded = Offloaded (typically not not-offloaded). Not Offloaded = Not offloaded. Failed = Failed. Verified = Verified. Local Deleted = Local deleted. Wrong files in a filter = Fail.",
               "description": "When: Choose each value and click Filter. Spot-check 3 files per view.",
-              "expectedResult": "All cloud statuses = mixed. Offloaded = Offloaded (typically not not-offloaded). Not Offloaded = Not offloaded. Failed = Failed. Verified = Verified. Local Deleted = Local deleted. Wrong files in a filter = Fail."
+              "expectedResult": "All cloud statuses = mixed. Offloaded = Offloaded (typically not not-offloaded). Not Offloaded = Not offloaded. Failed = Failed. Verified = Verified. Local Deleted = Local deleted. Wrong files in a filter = Fail.",
+              "purpose": "Filters must query lifecycle state correctly — wrong filter = editors miss Failed or delete wrong files.",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-09",
@@ -607,7 +853,11 @@
               "when": "Change filter. Watch the grid refresh via AJAX.",
               "then": "Grid updates to the right set. You should not need to fully reload upload.php for the filter to apply. Spot-check matches list-view filter.",
               "description": "When: Change filter. Watch the grid refresh via AJAX.",
-              "expectedResult": "Grid updates to the right set. You should not need to fully reload upload.php for the filter to apply. Spot-check matches list-view filter."
+              "expectedResult": "Grid updates to the right set. You should not need to fully reload upload.php for the filter to apply. Spot-check matches list-view filter.",
+              "purpose": "Grid AJAX filter must match list filter semantics — same lifecycle query, different view (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-10",
@@ -619,7 +869,11 @@
               "when": "Find LEGACY.",
               "then": "It appears under Offloaded (not missing / not Not offloaded). Front-end URL still works.",
               "description": "Given: File LEGACY offloaded before 6.2.0.\nWhen: Find LEGACY.",
-              "expectedResult": "It appears under Offloaded (not missing / not Not offloaded). Front-end URL still works."
+              "expectedResult": "It appears under Offloaded (not missing / not Not offloaded). Front-end URL still works.",
+              "purpose": "Pre-6.2.0 offloads without full lifecycle meta must still appear as Offloaded — backward compatibility (G1).",
+              "goals": [
+                "G1"
+              ]
             },
             {
               "id": "TC-ML-11",
@@ -631,7 +885,11 @@
               "when": "1. Set Private. Update/Save. Close details. Reopen. 2. Set Public. Save. Reopen.",
               "then": "The dropdown keeps the last saved value. Help text: “Private media is delivered with short-lived signed URLs.”",
               "description": "Given: File is offloaded. Provider supports object-level ACL (S3 / Spaces / Wasabi / MinIO typically yes; R2 no; GCS with UBLA no — mark N/A and confirm UI says unsupported).\nWhen: 1. Set Private. Update/Save. Close details. Reopen. 2. Set Public. Save. Reopen.",
-              "expectedResult": "The dropdown keeps the last saved value. Help text: “Private media is delivered with short-lived signed URLs.”"
+              "expectedResult": "The dropdown keeps the last saved value. Help text: “Private media is delivered with short-lived signed URLs.”",
+              "purpose": "Per-object ACL preference must persist and respect provider capability limits.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-ML-12",
@@ -643,7 +901,12 @@
               "when": "View the page logged-out. Inspect the image/file URL.",
               "then": "It is not a long-lived public CDN/bucket URL that anyone can guess forever. It is a signed/temporary URL (or WP-mediated). File still displays for legitimate page views. Direct bucket URL without signature should not stay open.",
               "description": "Given: Cloud Access = Private. Presigned/signed delivery available.\nWhen: View the page logged-out. Inspect the image/file URL.",
-              "expectedResult": "It is not a long-lived public CDN/bucket URL that anyone can guess forever. It is a signed/temporary URL (or WP-mediated). File still displays for legitimate page views. Direct bucket URL without signature should not stay open."
+              "expectedResult": "It is not a long-lived public CDN/bucket URL that anyone can guess forever. It is a signed/temporary URL (or WP-mediated). File still displays for legitimate page views. Direct bucket URL without signature should not stay open.",
+              "purpose": "Private objects must not be delivered via guessable permanent public URLs (G3).",
+              "goals": [
+                "G3"
+              ],
+              "failImpact": "Private media leaked to anyone with bucket URL pattern."
             },
             {
               "id": "TC-ML-13",
@@ -655,10 +918,19 @@
               "when": "On 1–3 test files, run Sync to Cloud (list) / Offload to Cloud (grid), then later Remove from Cloud on a disposable file.",
               "then": "Action completes, status updates, no fatal error. List labels: Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server.",
               "description": "When: On 1–3 test files, run Sync to Cloud (list) / Offload to Cloud (grid), then later Remove from Cloud on a disposable file.",
-              "expectedResult": "Action completes, status updates, no fatal error. List labels: Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server."
+              "expectedResult": "Action completes, status updates, no fatal error. List labels: Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server.",
+              "purpose": "Lifecycle UI must not break existing bulk sync/remove/delete/download actions.",
+              "goals": [
+                "G1"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Media Library is where editors see per-file lifecycle truth (G1). List, grid, details, and filters must agree. URL delivery for private media must not leak permanent public links (G3).",
+      "goals": [
+        "G1",
+        "G3"
       ]
     },
     {
@@ -680,7 +952,12 @@
               "when": "Attempt Delete from Server.",
               "then": "Delete is blocked or skipped. Local file still exists on disk. Message is understandable (needs verification / cloud copy not confirmed). Dashboard Local removed does not jump up for this file.",
               "description": "Given: Safety ON. File is in the cloud but Lifecycle is Offloaded (not Verified).\nWhen: Attempt Delete from Server.",
-              "expectedResult": "Delete is blocked or skipped. Local file still exists on disk. Message is understandable (needs verification / cloud copy not confirmed). Dashboard Local removed does not jump up for this file."
+              "expectedResult": "Delete is blocked or skipped. Local file still exists on disk. Message is understandable (needs verification / cloud copy not confirmed). Dashboard Local removed does not jump up for this file.",
+              "purpose": "Core safety gate — unverified offloaded file must not lose local copy while cloud may be wrong or missing.",
+              "goals": [
+                "G5"
+              ],
+              "failImpact": "Permanent data loss if cloud object was never confirmed or was deleted externally."
             },
             {
               "id": "TC-DEL-02",
@@ -692,7 +969,11 @@
               "when": "Delete from Server.",
               "then": "Success. Local file gone. Front still shows media from cloud. Lifecycle = Local deleted.",
               "description": "Given: Lifecycle = Verified. Safety ON.\nWhen: Delete from Server.",
-              "expectedResult": "Success. Local file gone. Front still shows media from cloud. Lifecycle = Local deleted."
+              "expectedResult": "Success. Local file gone. Front still shows media from cloud. Lifecycle = Local deleted.",
+              "purpose": "After verification confirms cloud copy, intentional local delete must succeed and site keeps serving from cloud.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-DEL-03",
@@ -704,7 +985,11 @@
               "when": "Click Download to Server. Check wp-content/uploads (or hosting file manager).",
               "then": "Local file is back. Lifecycle returns to Verified (or Offloaded if verify meta is not verified). Site still works.",
               "description": "Given: LOCAL-GONE exists (local already deleted).\nWhen: Click Download to Server. Check wp-content/uploads (or hosting file manager).",
-              "expectedResult": "Local file is back. Lifecycle returns to Verified (or Offloaded if verify meta is not verified). Site still works."
+              "expectedResult": "Local file is back. Lifecycle returns to Verified (or Offloaded if verify meta is not verified). Site still works.",
+              "purpose": "Operators can recover local copies after delete-local — reversibility path.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-DEL-04",
@@ -716,7 +1001,11 @@
               "when": "Try delete local a second time.",
               "then": "Treated as already removed / skipped. No fatal, no endless retry spinner.",
               "description": "Given: File is already Local Deleted.\nWhen: Try delete local a second time.",
-              "expectedResult": "Treated as already removed / skipped. No fatal, no endless retry spinner."
+              "expectedResult": "Treated as already removed / skipped. No fatal, no endless retry spinner.",
+              "purpose": "Idempotent delete-local — no error storms or retry loops on already-removed locals.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-DEL-05",
@@ -728,7 +1017,11 @@
               "when": "On a disposable Offloaded-but-not-Verified file, Delete from Server.",
               "then": "Local delete is allowed. Immediately turn the setting back ON and Save. Note the risk in the log.",
               "description": "Given: A disposable Offloaded-but-not-Verified file exists. Risky — staging only.\nWhen: On a disposable Offloaded-but-not-Verified file, Delete from Server.",
-              "expectedResult": "Local delete is allowed. Immediately turn the setting back ON and Save. Note the risk in the log."
+              "expectedResult": "Local delete is allowed. Immediately turn the setting back ON and Save. Note the risk in the log.",
+              "purpose": "Confirm setting OFF actually disables gate — merchants who opt out accept risk knowingly.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-DEL-06",
@@ -740,7 +1033,11 @@
               "when": "Repeat TC-DEL-01 on another unverified file.",
               "then": "Protection has returned (blocked/skipped).",
               "description": "Given: After TC-DEL-05.\nWhen: Repeat TC-DEL-01 on another unverified file.",
-              "expectedResult": "Protection has returned (blocked/skipped)."
+              "expectedResult": "Protection has returned (blocked/skipped).",
+              "purpose": "Re-enabling safety must restore protection immediately after TC-DEL-05.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-DEL-07",
@@ -752,10 +1049,18 @@
               "when": "Run remove-local on the library (prefer a small staging set).",
               "then": "Unverified files are skipped/failed with a clear reason. Verified files can be deleted locally. No mass wipe of unverified media.",
               "description": "Given: Mix of verified and unverified offloaded files. Safety ON.\nWhen: Run remove-local on the library (prefer a small staging set).",
-              "expectedResult": "Unverified files are skipped/failed with a clear reason. Verified files can be deleted locally. No mass wipe of unverified media."
+              "expectedResult": "Unverified files are skipped/failed with a clear reason. Verified files can be deleted locally. No mass wipe of unverified media.",
+              "purpose": "Bulk delete-local job must apply same verification gate as per-file UI (G5).",
+              "goals": [
+                "G5"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Require Verification Before Delete Local must prevent local deletion until cloud existence is confirmed (G5). This guards against permanent data loss when cloud copy is missing or stale.",
+      "goals": [
+        "G5"
       ]
     },
     {
@@ -777,7 +1082,11 @@
               "when": "View product logged-out.",
               "then": "Image loads (cloud/CDN). No broken image.",
               "description": "Given: WooCommerce is installed. Product image is offloaded. Mark Skipped if Woo is out of scope.\nWhen: View product logged-out.",
-              "expectedResult": "Image loads (cloud/CDN). No broken image."
+              "expectedResult": "Image loads (cloud/CDN). No broken image.",
+              "purpose": "Public product images offloaded to cloud must still render on storefront (G3).",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-WOO-02",
@@ -789,7 +1098,11 @@
               "when": "1. Set PRIVATE-DL Cloud Access = Private. 2. Point a downloadable product file URL at that media. 3. Place a test order as a customer (or use an existing completed order). 4. Customer who bought the product clicks Download.",
               "then": "File downloads. Redirect may go to a short-lived signed cloud URL. No PHP error.",
               "description": "Given: Woo downloadable products are in scope. PRIVATE-DL exists. Mark Skipped if Woo downloads are out of scope.\nWhen: 1. Set PRIVATE-DL Cloud Access = Private. 2. Point a downloadable product file URL at that media. 3. Place a test order as a customer (or use an existing completed order). 4. Customer who bought the product clicks Download.",
-              "expectedResult": "File downloads. Redirect may go to a short-lived signed cloud URL. No PHP error."
+              "expectedResult": "File downloads. Redirect may go to a short-lived signed cloud URL. No PHP error.",
+              "purpose": "Authorized buyer must receive file via signed/temporary delivery, not broken permanent URL.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-WOO-03",
@@ -801,7 +1114,11 @@
               "when": "Try the raw bucket/CDN URL of PRIVATE-DL without a fresh signature (copy from File Manager permanent-style URL if shown, or strip query signature).",
               "then": "Access denied / 403 / does not download the product. Product page HTML does not leak a long-lived public object URL for that private file.",
               "description": "Given: Woo private downloads in scope. PRIVATE-DL is private.\nWhen: Try the raw bucket/CDN URL of PRIVATE-DL without a fresh signature (copy from File Manager permanent-style URL if shown, or strip query signature).",
-              "expectedResult": "Access denied / 403 / does not download the product. Product page HTML does not leak a long-lived public object URL for that private file."
+              "expectedResult": "Access denied / 403 / does not download the product. Product page HTML does not leak a long-lived public object URL for that private file.",
+              "purpose": "Unauthorized users must not download private product files via raw bucket/CDN URL (G3).",
+              "goals": [
+                "G3"
+              ]
             }
           ]
         },
@@ -819,7 +1136,11 @@
               "when": "Authorized customer downloads.",
               "then": "File is delivered (signed redirect if EDD method is redirect).",
               "description": "Given: EDD is in scope. Mark Skipped if EDD is not installed.\nWhen: Authorized customer downloads.",
-              "expectedResult": "File is delivered (signed redirect if EDD method is redirect)."
+              "expectedResult": "File is delivered (signed redirect if EDD method is redirect).",
+              "purpose": "EDD download path must work for private offloaded files same as Woo (G3).",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-EDD-02",
@@ -831,10 +1152,18 @@
               "when": "Browse wp-admin and the front.",
               "then": "No fatal “class EDD not found”. Plugin screens still open.",
               "description": "Given: This site does not have EDD, or use a clone without EDD.\nWhen: Browse wp-admin and the front.",
-              "expectedResult": "No fatal “class EDD not found”. Plugin screens still open."
+              "expectedResult": "No fatal “class EDD not found”. Plugin screens still open.",
+              "purpose": "EDD integration must be optional — no fatal when plugin absent.",
+              "goals": [
+                "Env"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "E-commerce download flows must deliver private offloaded files securely without leaking permanent bucket URLs (G3).",
+      "goals": [
+        "G3"
       ]
     },
     {
@@ -856,7 +1185,11 @@
               "when": "wp help acoofmp",
               "then": "Lists: offload, restore, delete-local, remove, verify, status.",
               "description": "Given: WP-CLI exists, or mark Skipped.\nWhen: wp help acoofmp",
-              "expectedResult": "Lists: offload, restore, delete-local, remove, verify, status."
+              "expectedResult": "Lists: offload, restore, delete-local, remove, verify, status.",
+              "purpose": "CLI surface documents verify/delete-local/status — operators discover lifecycle commands.",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-02",
@@ -868,7 +1201,12 @@
               "when": "wp acoofmp status then open Dashboard.",
               "then": "Same kind of totals (Offloaded, Verified, Awaiting Verification, Failed, Local Removed). Exact match may lag by a cache refresh — refresh Dashboard if needed.",
               "description": "Given: WP-CLI exists.\nWhen: wp acoofmp status then open Dashboard.",
-              "expectedResult": "Same kind of totals (Offloaded, Verified, Awaiting Verification, Failed, Local Removed). Exact match may lag by a cache refresh — refresh Dashboard if needed."
+              "expectedResult": "Same kind of totals (Offloaded, Verified, Awaiting Verification, Failed, Local Removed). Exact match may lag by a cache refresh — refresh Dashboard if needed.",
+              "purpose": "status counts must align with Dashboard lifecycle buckets (G1, G8).",
+              "goals": [
+                "G1",
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-03",
@@ -880,7 +1218,11 @@
               "when": "wp acoofmp offload --limit=10",
               "then": "Finishes cleanly. Done. success=… failed=… skipped=… then success. Those files show Offloaded in Media Library.",
               "description": "Given: WP-CLI exists. Staging.\nWhen: wp acoofmp offload --limit=10",
-              "expectedResult": "Finishes cleanly. Done. success=… failed=… skipped=… then success. Those files show Offloaded in Media Library."
+              "expectedResult": "Finishes cleanly. Done. success=… failed=… skipped=… then success. Those files show Offloaded in Media Library.",
+              "purpose": "CLI offload still works and updates Media Library lifecycle to Offloaded.",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-04",
@@ -892,7 +1234,11 @@
               "when": "wp acoofmp offload --limit=10 --skip-failed",
               "then": "Failed items are not picked as candidates. Command still finishes.",
               "description": "Given: At least one Failed attachment.\nWhen: wp acoofmp offload --limit=10 --skip-failed",
-              "expectedResult": "Failed items are not picked as candidates. Command still finishes."
+              "expectedResult": "Failed items are not picked as candidates. Command still finishes.",
+              "purpose": "Failed attachments must not be re-offload candidates when --skip-failed is used.",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-05",
@@ -904,7 +1250,12 @@
               "when": "wp acoofmp verify --limit=10",
               "then": "Completes (does not hang forever). Success/fail counts printed.",
               "description": "Given: WP-CLI exists.\nWhen: wp acoofmp verify --limit=10",
-              "expectedResult": "Completes (does not hang forever). Success/fail counts printed."
+              "expectedResult": "Completes (does not hang forever). Success/fail counts printed.",
+              "purpose": "CLI verify must complete on small batch — same durability expectation as UI (G4, G8).",
+              "goals": [
+                "G4",
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-06",
@@ -916,7 +1267,13 @@
               "when": "wp acoofmp delete-local --limit=10",
               "then": "Logs Candidates (safe): N | Skipped (not verified): M. If none verified: warning No verified attachments eligible for local delete. Unverified local files still on disk.",
               "description": "Given: Safety ON. Mix of verified + unverified.\nWhen: wp acoofmp delete-local --limit=10",
-              "expectedResult": "Logs Candidates (safe): N | Skipped (not verified): M. If none verified: warning No verified attachments eligible for local delete. Unverified local files still on disk."
+              "expectedResult": "Logs Candidates (safe): N | Skipped (not verified): M. If none verified: warning No verified attachments eligible for local delete. Unverified local files still on disk.",
+              "purpose": "CLI delete-local must enforce verification safety same as UI (G5, G8).",
+              "goals": [
+                "G5",
+                "G8"
+              ],
+              "failImpact": "Mass local wipe via CLI bypassing safety setting."
             },
             {
               "id": "TC-CLI-07",
@@ -928,7 +1285,12 @@
               "when": "wp acoofmp delete-local --limit=10",
               "then": "Only verified (safe) files lose local copies. Media shows Local Deleted for those.",
               "description": "Given: Some verified files with local copies.\nWhen: wp acoofmp delete-local --limit=10",
-              "expectedResult": "Only verified (safe) files lose local copies. Media shows Local Deleted for those."
+              "expectedResult": "Only verified (safe) files lose local copies. Media shows Local Deleted for those.",
+              "purpose": "Verified files are eligible for CLI delete-local when safety ON.",
+              "goals": [
+                "G5",
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-08",
@@ -940,7 +1302,11 @@
               "when": "wp acoofmp restore --limit=5",
               "then": "Local files come back for those attachments. No crash.",
               "description": "Given: Attachments whose local copies were removed.\nWhen: wp acoofmp restore --limit=5",
-              "expectedResult": "Local files come back for those attachments. No crash."
+              "expectedResult": "Local files come back for those attachments. No crash.",
+              "purpose": "CLI restore path recovers local files after delete-local.",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-09",
@@ -952,7 +1318,11 @@
               "when": "wp acoofmp remove --limit=5. There is no extra --yes prompt in CLI — your confirmation is the limit + staging.",
               "then": "Those 5 (or fewer candidates) are removed from cloud. Media shows Not offloaded.",
               "description": "Given: Disposable offloaded files only, local copies present. Staging.\nWhen: wp acoofmp remove --limit=5. There is no extra --yes prompt in CLI — your confirmation is the limit + staging.",
-              "expectedResult": "Those 5 (or fewer candidates) are removed from cloud. Media shows Not offloaded."
+              "expectedResult": "Those 5 (or fewer candidates) are removed from cloud. Media shows Not offloaded.",
+              "purpose": "CLI remove-from-cloud works on disposable batch without prompting (staging discipline required).",
+              "goals": [
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-10",
@@ -964,7 +1334,12 @@
               "when": "wp acoofmp verify --limit=5 --async",
               "then": "Returns immediately (verify enqueued / Job UUID). Bulk Operations shows a Verify offloads job.",
               "description": "Given: WP-CLI exists.\nWhen: wp acoofmp verify --limit=5 --async",
-              "expectedResult": "Returns immediately (verify enqueued / Job UUID). Bulk Operations shows a Verify offloads job."
+              "expectedResult": "Returns immediately (verify enqueued / Job UUID). Bulk Operations shows a Verify offloads job.",
+              "purpose": "Async verify enqueues durable job visible in Bulk Operations — CLI and UI share job engine (G4, G8).",
+              "goals": [
+                "G4",
+                "G8"
+              ]
             },
             {
               "id": "TC-CLI-11",
@@ -976,10 +1351,19 @@
               "when": "Run the command that processes that item.",
               "then": "Output includes failed count. Process exits with error (not a silent success).",
               "description": "Given: You can cause a fail (e.g. verify after deleting a cloud object).\nWhen: Run the command that processes that item.",
-              "expectedResult": "Output includes failed count. Process exits with error (not a silent success)."
+              "expectedResult": "Output includes failed count. Process exits with error (not a silent success).",
+              "purpose": "Automation/scripts must detect verify/offload failures via exit code, not silent success.",
+              "goals": [
+                "G8"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "CLI must mirror admin lifecycle semantics and safety rules — not a divergent code path (G8, G5).",
+      "goals": [
+        "G8",
+        "G5"
       ]
     },
     {
@@ -1001,7 +1385,11 @@
               "when": "Click each.",
               "then": "Same filenames as Dashboard. Open cleanly. Spot-check 2 known IDs vs Media Library.",
               "description": "When: Click each.",
-              "expectedResult": "Same filenames as Dashboard. Open cleanly. Spot-check 2 known IDs vs Media Library."
+              "expectedResult": "Same filenames as Dashboard. Open cleanly. Spot-check 2 known IDs vs Media Library.",
+              "purpose": "Dashboard and Bulk Ops exports must be the same data source — no drift between entry points.",
+              "goals": [
+                "G6"
+              ]
             },
             {
               "id": "TC-CSV-02",
@@ -1013,7 +1401,12 @@
               "when": "Export.",
               "then": "CSV lists failed items for that job. IDs/reasons match the on-screen failure list.",
               "description": "Given: A job with Failed > 0.\nWhen: Export.",
-              "expectedResult": "CSV lists failed items for that job. IDs/reasons match the on-screen failure list."
+              "expectedResult": "CSV lists failed items for that job. IDs/reasons match the on-screen failure list.",
+              "purpose": "Per-job failure export must match on-screen failure list for that run (G4, G6).",
+              "goals": [
+                "G4",
+                "G6"
+              ]
             },
             {
               "id": "TC-CSV-03",
@@ -1025,7 +1418,11 @@
               "when": "While logged out or as non-admin, open /wp-json/acoofmp-api/v1/media/export/failed and /wp-json/acoofmp-api/v1/media/export/verification.",
               "then": "401/403 (not a CSV of customer data). Admin session can download.",
               "description": "When: While logged out or as non-admin, open /wp-json/acoofmp-api/v1/media/export/failed and /wp-json/acoofmp-api/v1/media/export/verification.",
-              "expectedResult": "401/403 (not a CSV of customer data). Admin session can download."
+              "expectedResult": "401/403 (not a CSV of customer data). Admin session can download.",
+              "purpose": "Media export REST endpoints must not leak customer media metadata to unprivileged users.",
+              "goals": [
+                "G6"
+              ]
             },
             {
               "id": "TC-CSV-04",
@@ -1037,7 +1434,11 @@
               "when": "Export verification CSV.",
               "then": "Download completes. WP admin is not frozen forever. File is readable.",
               "description": "Given: A bigger library (hundreds+).\nWhen: Export verification CSV.",
-              "expectedResult": "Download completes. WP admin is not frozen forever. File is readable."
+              "expectedResult": "Download completes. WP admin is not frozen forever. File is readable.",
+              "purpose": "Export must scale to real merchant libraries without hanging admin.",
+              "goals": [
+                "G6"
+              ]
             },
             {
               "id": "TC-CSV-05",
@@ -1049,10 +1450,19 @@
               "when": "After retry, export failed CSV / verification CSV again.",
               "then": "Fixed items leave Failed (or show verified). Remaining failures still listed.",
               "description": "Given: A job with failures.\nWhen: After retry, export failed CSV / verification CSV again.",
-              "expectedResult": "Fixed items leave Failed (or show verified). Remaining failures still listed."
+              "expectedResult": "Fixed items leave Failed (or show verified). Remaining failures still listed.",
+              "purpose": "Reports must reflect state after retry — fixed items leave Failed; remaining failures persist (G2, G6).",
+              "goals": [
+                "G2",
+                "G6"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Exported reports must match on-screen lifecycle truth and be restricted to admins (G6).",
+      "goals": [
+        "G6"
       ]
     },
     {
@@ -1074,7 +1484,11 @@
               "when": "Open Storage Provider and Media Library.",
               "then": "Existing credentials and offloads remain. You are not forced to re-upload the library.",
               "description": "Given: Site already had credentials and offloads before 6.2.0.\nWhen: Open Storage Provider and Media Library.",
-              "expectedResult": "Existing credentials and offloads remain. You are not forced to re-upload the library."
+              "expectedResult": "Existing credentials and offloads remain. You are not forced to re-upload the library.",
+              "purpose": "6.2.0 upgrade must be non-disruptive for existing offloaded libraries.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-REG-02",
@@ -1086,7 +1500,11 @@
               "when": "Save, verify connection, select bucket.",
               "then": "Save, verify connection, select bucket all work.",
               "description": "Given: You can save provider settings on staging.\nWhen: Save, verify connection, select bucket.",
-              "expectedResult": "Save, verify connection, select bucket all work."
+              "expectedResult": "Save, verify connection, select bucket all work.",
+              "purpose": "Provider onboarding path still works on this release.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-REG-03",
@@ -1098,7 +1516,11 @@
               "when": "Upload a new file via Media → Add New.",
               "then": "New file goes to cloud. Front loads. Thumbnails / srcset load.",
               "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a new file via Media → Add New.",
-              "expectedResult": "New file goes to cloud. Front loads. Thumbnails / srcset load."
+              "expectedResult": "New file goes to cloud. Front loads. Thumbnails / srcset load.",
+              "purpose": "Automatic upload offload still works — primary happy path for new media.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-REG-04",
@@ -1110,7 +1532,11 @@
               "when": "View front-end media.",
               "then": "Front-end media URLs use the CDN host and load.",
               "description": "Given: CDN is On, or mark Skipped.\nWhen: View front-end media.",
-              "expectedResult": "Front-end media URLs use the CDN host and load."
+              "expectedResult": "Front-end media URLs use the CDN host and load.",
+              "purpose": "CDN rewrite must apply on front-end when configured.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-REG-05",
@@ -1122,7 +1548,11 @@
               "when": "Confirm keep-local setting vs files on disk (separate from Delete from Server).",
               "then": "Files stay or leave locally as configured.",
               "description": "When: Confirm keep-local setting vs files on disk (separate from Delete from Server).",
-              "expectedResult": "Files stay or leave locally as configured."
+              "expectedResult": "Files stay or leave locally as configured.",
+              "purpose": "Keep local setting is independent of delete-local safety — upload behavior matches config.",
+              "goals": [
+                "G5"
+              ]
             },
             {
               "id": "TC-REG-06",
@@ -1134,7 +1564,11 @@
               "when": "Run Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server. Check Pause on the older progress UI.",
               "then": "Those cards still run. Pause still works on the older progress UI.",
               "description": "When: Run Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server. Check Pause on the older progress UI.",
-              "expectedResult": "Those cards still run. Pause still works on the older progress UI."
+              "expectedResult": "Those cards still run. Pause still works on the older progress UI.",
+              "purpose": "Older bulk UI still functional alongside Durable Job Engine.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-REG-07",
@@ -1146,7 +1580,11 @@
               "when": "View the ACF image on front/admin.",
               "then": "Correct image, cloud URL OK.",
               "description": "Given: ACF exists, or mark Skipped.\nWhen: View the ACF image on front/admin.",
-              "expectedResult": "Correct image, cloud URL OK."
+              "expectedResult": "Correct image, cloud URL OK.",
+              "purpose": "Third-party media fields still resolve cloud URLs correctly.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-REG-08",
@@ -1158,10 +1596,19 @@
               "when": "Start Durable Sync, then try Start Durable Remove (and the reverse).",
               "then": "Second button Blocked by Offload/Remove job. Message like “This process is already running.” HTTP conflict, no second job.",
               "description": "When: Start Durable Sync, then try Start Durable Remove (and the reverse).",
-              "expectedResult": "Second button Blocked by Offload/Remove job. Message like “This process is already running.” HTTP conflict, no second job."
+              "expectedResult": "Second button Blocked by Offload/Remove job. Message like “This process is already running.” HTTP conflict, no second job.",
+              "purpose": "Durable Sync and Durable Remove cannot run concurrently — prevents conflicting metadata writes.",
+              "goals": [
+                "G4"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Upgrade and core offload flows must not regress — existing merchants keep credentials, uploads, CDN, and mutual job exclusion.",
+      "goals": [
+        "Env",
+        "G4"
       ]
     },
     {
@@ -1183,7 +1630,11 @@
               "when": "Save a bad key/secret and verify.",
               "then": "Clear credentials-style message, not a raw stack dump. Restore good credentials after.",
               "description": "Given: You can temporarily save bad credentials on staging.\nWhen: Save a bad key/secret and verify.",
-              "expectedResult": "Clear credentials-style message, not a raw stack dump. Restore good credentials after."
+              "expectedResult": "Clear credentials-style message, not a raw stack dump. Restore good credentials after.",
+              "purpose": "Credential errors must guide fix, not expose internals.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ERR-02",
@@ -1195,7 +1646,11 @@
               "when": "Try an upload or connection verify.",
               "then": "Can’t-upload / permission guidance.",
               "description": "Given: Credentials that can list but not PutObject (if you can simulate).\nWhen: Try an upload or connection verify.",
-              "expectedResult": "Can’t-upload / permission guidance."
+              "expectedResult": "Can’t-upload / permission guidance.",
+              "purpose": "IAM permission gaps must be identifiable from the message.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ERR-03",
@@ -1207,7 +1662,11 @@
               "when": "Save wrong bucket/region and verify.",
               "then": "Clear configuration message.",
               "description": "Given: You can set a wrong bucket or region on staging.\nWhen: Save wrong bucket/region and verify.",
-              "expectedResult": "Clear configuration message."
+              "expectedResult": "Clear configuration message.",
+              "purpose": "Configuration mistakes must surface clearly at connect time.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-ERR-04",
@@ -1219,7 +1678,11 @@
               "when": "Click Diagnose.",
               "then": "Explains what’s wrong and what to try next.",
               "description": "Given: A mapped object is missing.\nWhen: Click Diagnose.",
-              "expectedResult": "Explains what’s wrong and what to try next."
+              "expectedResult": "Explains what’s wrong and what to try next.",
+              "purpose": "FM must help operators understand missing/mismatched objects (ties to G2).",
+              "goals": [
+                "G2"
+              ]
             },
             {
               "id": "TC-ERR-05",
@@ -1231,10 +1694,18 @@
               "when": "Watch retry behavior.",
               "then": "Permanent permission problems do not retry forever. Temporary errors retry, then fail clearly.",
               "description": "Given: You can observe a permission error and a brief network blip.\nWhen: Watch retry behavior.",
-              "expectedResult": "Permanent permission problems do not retry forever. Temporary errors retry, then fail clearly."
+              "expectedResult": "Permanent permission problems do not retry forever. Temporary errors retry, then fail clearly.",
+              "purpose": "Job engine must not infinite-retry permanent errors; temporary errors retry then fail clearly.",
+              "goals": [
+                "G4"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Failures must be human-readable and actionable — not raw stack traces or silent retries forever.",
+      "goals": [
+        "Env"
       ]
     },
     {
@@ -1256,7 +1727,11 @@
               "when": "View front-end media URLs.",
               "then": "Front URLs have no acoofmp_v=.",
               "description": "Given: Cache Busting is OFF.\nWhen: View front-end media URLs.",
-              "expectedResult": "Front URLs have no acoofmp_v=."
+              "expectedResult": "Front URLs have no acoofmp_v=.",
+              "purpose": "Default OFF must not add query params to media URLs.",
+              "goals": [
+                "G3"
+              ]
             },
             {
               "id": "TC-CACHE-02",
@@ -1268,10 +1743,18 @@
               "when": "Turn ON, save, update/re-offload a file, view front.",
               "then": "URL has version query. Bucket object key/path unchanged. Image loads. Srcset URLs also get the version. Turn OFF → new pages stop adding it.",
               "description": "When: Turn ON, save, update/re-offload a file, view front.",
-              "expectedResult": "URL has version query. Bucket object key/path unchanged. Image loads. Srcset URLs also get the version. Turn OFF → new pages stop adding it."
+              "expectedResult": "URL has version query. Bucket object key/path unchanged. Image loads. Srcset URLs also get the version. Turn OFF → new pages stop adding it.",
+              "purpose": "When ON, version query busts CDN cache; object key in bucket unchanged.",
+              "goals": [
+                "G3"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Cache busting must version delivery URLs without changing bucket object keys.",
+      "goals": [
+        "G3"
       ]
     },
     {
@@ -1293,7 +1776,11 @@
               "when": "Confirm default and front-end assets before sync.",
               "then": "Theme/plugin CSS/JS stay on WordPress. Turning the feature ON does not break the site before sync.",
               "description": "When: Confirm default and front-end assets before sync.",
-              "expectedResult": "Theme/plugin CSS/JS stay on WordPress. Turning the feature ON does not break the site before sync."
+              "expectedResult": "Theme/plugin CSS/JS stay on WordPress. Turning the feature ON does not break the site before sync.",
+              "purpose": "Feature off by default; enabling must not break site before sync completes.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-SA-02",
@@ -1305,7 +1792,11 @@
               "when": "Enable Static Asset Offloading; tick CSS/JS/fonts/theme/plugin; include/exclude rules; save.",
               "then": "Values stick after reload. UI mentions Bulk Operations to sync/remove.",
               "description": "When: Enable Static Asset Offloading; tick CSS/JS/fonts/theme/plugin; include/exclude rules; save.",
-              "expectedResult": "Values stick after reload. UI mentions Bulk Operations to sync/remove."
+              "expectedResult": "Values stick after reload. UI mentions Bulk Operations to sync/remove.",
+              "purpose": "Static asset settings survive save/reload.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-SA-03",
@@ -1317,7 +1808,11 @@
               "when": "Sync Static Assets.",
               "then": "Background job, progress moves, Pause/Resume/Stop work, no duplicate Sync/Remove while active. After sync, eligible CSS/JS can load from cloud/CDN. CSS still styles the site (not downloaded as a wrong MIME). Fonts/icons still load. Refresh Status updates counts.",
               "description": "Given: Static asset offloading is configured.\nWhen: Sync Static Assets.",
-              "expectedResult": "Background job, progress moves, Pause/Resume/Stop work, no duplicate Sync/Remove while active. After sync, eligible CSS/JS can load from cloud/CDN. CSS still styles the site (not downloaded as a wrong MIME). Fonts/icons still load. Refresh Status updates counts."
+              "expectedResult": "Background job, progress moves, Pause/Resume/Stop work, no duplicate Sync/Remove while active. After sync, eligible CSS/JS can load from cloud/CDN. CSS still styles the site (not downloaded as a wrong MIME). Fonts/icons still load. Refresh Status updates counts.",
+              "purpose": "Static asset sync runs as background job with progress and correct MIME delivery.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-SA-04",
@@ -1329,7 +1824,11 @@
               "when": "Remove from Cloud (confirm).",
               "then": "Cloud copies removed. Local theme/plugin files still on disk. Site falls back to local URLs. Counts toward zero.",
               "description": "Given: Static assets were synced.\nWhen: Remove from Cloud (confirm).",
-              "expectedResult": "Cloud copies removed. Local theme/plugin files still on disk. Site falls back to local URLs. Counts toward zero."
+              "expectedResult": "Cloud copies removed. Local theme/plugin files still on disk. Site falls back to local URLs. Counts toward zero.",
+              "purpose": "Remove static assets from cloud without deleting local theme/plugin files.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-SA-05",
@@ -1341,10 +1840,18 @@
               "when": "Observe a failed static-asset sync.",
               "then": "Site does not break. Failure visible in job failures.",
               "description": "Given: A sync can fail (or inspect a failed job).\nWhen: Observe a failed static-asset sync.",
-              "expectedResult": "Site does not break. Failure visible in job failures."
+              "expectedResult": "Site does not break. Failure visible in job failures.",
+              "purpose": "Static asset sync failure must not break front-end — fallback to local.",
+              "goals": [
+                "Env"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Theme/plugin static asset offload is optional and must not break site styling when toggled or on sync failure.",
+      "goals": [
+        "Env"
       ]
     },
     {
@@ -1366,7 +1873,11 @@
               "when": "Open File Manager and use navigation controls.",
               "then": "Page loads; breadcrumbs like Media Storage / uploads / …; Back / Forward / Refresh; Grid and List; sort + type filters; search in current folder; controls aligned. Provider limits (e.g. R2) shown honestly.",
               "description": "When: Open File Manager and use navigation controls.",
-              "expectedResult": "Page loads; breadcrumbs like Media Storage / uploads / …; Back / Forward / Refresh; Grid and List; sort + type filters; search in current folder; controls aligned. Provider limits (e.g. R2) shown honestly."
+              "expectedResult": "Page loads; breadcrumbs like Media Storage / uploads / …; Back / Forward / Refresh; Grid and List; sort + type filters; search in current folder; controls aligned. Provider limits (e.g. R2) shown honestly.",
+              "purpose": "Core navigation and provider limits visible before destructive tests.",
+              "goals": [
+                "G7"
+              ]
             },
             {
               "id": "TC-FM-02",
@@ -1378,7 +1889,11 @@
               "when": "Open folders; upload button + drag-drop; create folder; click row opens details (checkbox does not); ⋮ menu; Rename/Move; Copy/Duplicate; Delete confirms; Download; Share/temp link when supported.",
               "then": "Those actions work. Metadata/versions supported or clearly unsupported.",
               "description": "When: Open folders; upload button + drag-drop; create folder; click row opens details (checkbox does not); ⋮ menu; Rename/Move; Copy/Duplicate; Delete confirms; Download; Share/temp link when supported.",
-              "expectedResult": "Those actions work. Metadata/versions supported or clearly unsupported."
+              "expectedResult": "Those actions work. Metadata/versions supported or clearly unsupported.",
+              "purpose": "Single-file CRUD and metadata actions work without breaking linked media.",
+              "goals": [
+                "G7"
+              ]
             },
             {
               "id": "TC-FM-03",
@@ -1390,7 +1905,12 @@
               "when": "Checkbox selects without opening details; Shift-click range; select page / clear; bulk delete confirms (durable job when large); bulk copy/move; ZIP/multi download if used.",
               "then": "Multi-select and bulk actions behave as described.",
               "description": "When: Checkbox selects without opening details; Shift-click range; select page / clear; bulk delete confirms (durable job when large); bulk copy/move; ZIP/multi download if used.",
-              "expectedResult": "Multi-select and bulk actions behave as described."
+              "expectedResult": "Multi-select and bulk actions behave as described.",
+              "purpose": "Bulk select + bulk delete/copy/move/download affect only selected keys, report partial failures, show loading state (G7).",
+              "goals": [
+                "G7"
+              ],
+              "failImpact": "Wrong objects deleted or bulk delete stuck while UI shows success — pre-release FM regression."
             },
             {
               "id": "TC-FM-04",
@@ -1402,7 +1922,11 @@
               "when": "Inspect a linked WP media object. Import a cloud-only file. Rename/move a linked file.",
               "then": "Linked objects show attachment info. Random cloud-only files are not auto-added. Import to Media Library works for a cloud-only file. After rename/move of a linked file, the media item still resolves on the site.",
               "description": "When: Inspect a linked WP media object. Import a cloud-only file. Rename/move a linked file.",
-              "expectedResult": "Linked objects show attachment info. Random cloud-only files are not auto-added. Import to Media Library works for a cloud-only file. After rename/move of a linked file, the media item still resolves on the site."
+              "expectedResult": "Linked objects show attachment info. Random cloud-only files are not auto-added. Import to Media Library works for a cloud-only file. After rename/move of a linked file, the media item still resolves on the site.",
+              "purpose": "Cloud objects linked to attachments stay consistent after FM rename/move/import.",
+              "goals": [
+                "G7"
+              ]
             },
             {
               "id": "TC-FM-05",
@@ -1414,10 +1938,18 @@
               "when": "Try path traversal. Call /wp-json/acoofmp-api/v1/files/* as non-admin. Watch Network for secrets.",
               "then": "Paths like ../ rejected. Non-admin cannot call /wp-json/acoofmp-api/v1/files/* (401/403). Secrets never appear in Network responses. Diagnose panel is understandable.",
               "description": "When: Try path traversal. Call /wp-json/acoofmp-api/v1/files/* as non-admin. Watch Network for secrets.",
-              "expectedResult": "Paths like ../ rejected. Non-admin cannot call /wp-json/acoofmp-api/v1/files/* (401/403). Secrets never appear in Network responses. Diagnose panel is understandable."
+              "expectedResult": "Paths like ../ rejected. Non-admin cannot call /wp-json/acoofmp-api/v1/files/* (401/403). Secrets never appear in Network responses. Diagnose panel is understandable.",
+              "purpose": "FM REST API and path handling must reject traversal and unauthorized access.",
+              "goals": [
+                "G7"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "File Manager must browse safely, link to WP media correctly, and run scoped bulk ops that complete honestly (G7).",
+      "goals": [
+        "G7"
       ]
     },
     {
@@ -1439,7 +1971,11 @@
               "when": "Open Troubleshoot and run the connection check.",
               "then": "Page loads. Connection check passes when config is good.",
               "description": "Given: Provider config is good.\nWhen: Open Troubleshoot and run the connection check.",
-              "expectedResult": "Page loads. Connection check passes when config is good."
+              "expectedResult": "Page loads. Connection check passes when config is good.",
+              "purpose": "Baseline connection health visible on Troubleshoot screen.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-TS-02",
@@ -1451,7 +1987,11 @@
               "when": "Break credentials on purpose, run check. Restore credentials after.",
               "then": "Check fails clearly.",
               "description": "Given: You can break credentials on purpose on staging.\nWhen: Break credentials on purpose, run check. Restore credentials after.",
-              "expectedResult": "Check fails clearly."
+              "expectedResult": "Check fails clearly.",
+              "purpose": "Broken credentials must fail check with a clear message.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-TS-03",
@@ -1463,10 +2003,19 @@
               "when": "Run media/URL checks. Export diagnostics. Use import/clear tools if present.",
               "then": "Missing/mismatched media and URL/delivery checks are useful. Export diagnostics downloads a report. Import/clear tools still usable. Running checks does not wipe settings or mappings.",
               "description": "When: Run media/URL checks. Export diagnostics. Use import/clear tools if present.",
-              "expectedResult": "Missing/mismatched media and URL/delivery checks are useful. Export diagnostics downloads a report. Import/clear tools still usable. Running checks does not wipe settings or mappings."
+              "expectedResult": "Missing/mismatched media and URL/delivery checks are useful. Export diagnostics downloads a report. Import/clear tools still usable. Running checks does not wipe settings or mappings.",
+              "purpose": "Media and URL diagnostics useful; export/import tools non-destructive.",
+              "goals": [
+                "G1",
+                "G3"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Diagnostics help operators fix config without wiping settings or mappings.",
+      "goals": [
+        "Env"
       ]
     },
     {
@@ -1488,7 +2037,15 @@
               "when": "Connect → File Manager browse → upload → download → copy → delete → front-end media loads → Durable Sync sample → Start Verification sample → private access → delete-local safety once.",
               "then": "All steps Pass (or Fail with notes). Private/Cloud Access is typically supported.",
               "description": "Given: Amazon S3 is in scope for this pass, or mark Skipped.\nWhen: Connect → File Manager browse → upload → download → copy → delete → front-end media loads → Durable Sync sample → Start Verification sample → private access → delete-local safety once.",
-              "expectedResult": "All steps Pass (or Fail with notes). Private/Cloud Access is typically supported."
+              "expectedResult": "All steps Pass (or Fail with notes). Private/Cloud Access is typically supported.",
+              "purpose": "Core lifecycle + verification path works on Amazon S3, including private/ACL where supported.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             },
             {
               "id": "TC-PROV-R2",
@@ -1500,7 +2057,15 @@
               "when": "Same thin path as S3.",
               "then": "All steps Pass except Cloud Access / object ACL: N/A — confirm UI says unsupported.",
               "description": "Given: Cloudflare R2 is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
-              "expectedResult": "All steps Pass except Cloud Access / object ACL: N/A — confirm UI says unsupported."
+              "expectedResult": "All steps Pass except Cloud Access / object ACL: N/A — confirm UI says unsupported.",
+              "purpose": "Same thin path on Cloudflare R2; Cloud Access / object ACL is N/A and UI must say unsupported.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             },
             {
               "id": "TC-PROV-GCS",
@@ -1512,7 +2077,15 @@
               "when": "Same thin path as S3.",
               "then": "Pass / Fail. If UBLA: no per-object ACL — Cloud Access N/A.",
               "description": "Given: Google Cloud is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
-              "expectedResult": "Pass / Fail. If UBLA: no per-object ACL — Cloud Access N/A."
+              "expectedResult": "Pass / Fail. If UBLA: no per-object ACL — Cloud Access N/A.",
+              "purpose": "Same thin path on Google Cloud; UBLA means no per-object ACL — Cloud Access N/A.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             },
             {
               "id": "TC-PROV-SPACES",
@@ -1524,7 +2097,15 @@
               "when": "Same thin path as S3.",
               "then": "Pass / Fail. Object ACL typically supported.",
               "description": "Given: DigitalOcean Spaces is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
-              "expectedResult": "Pass / Fail. Object ACL typically supported."
+              "expectedResult": "Pass / Fail. Object ACL typically supported.",
+              "purpose": "Same thin path on DigitalOcean Spaces; object ACL typically supported.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             },
             {
               "id": "TC-PROV-WASABI",
@@ -1536,7 +2117,15 @@
               "when": "Same thin path as S3.",
               "then": "Pass / Fail. Object ACL typically supported.",
               "description": "Given: Wasabi is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
-              "expectedResult": "Pass / Fail. Object ACL typically supported."
+              "expectedResult": "Pass / Fail. Object ACL typically supported.",
+              "purpose": "Same thin path on Wasabi; object ACL typically supported.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             },
             {
               "id": "TC-PROV-MINIO",
@@ -1548,10 +2137,26 @@
               "when": "Same thin path as S3.",
               "then": "Pass / Fail. Object ACL typically supported.",
               "description": "Given: MinIO is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
-              "expectedResult": "Pass / Fail. Object ACL typically supported."
+              "expectedResult": "Pass / Fail. Object ACL typically supported.",
+              "purpose": "Same thin path on MinIO; object ACL typically supported.",
+              "goals": [
+                "G1",
+                "G2",
+                "G3",
+                "G4",
+                "G7"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Core lifecycle + verification path works on each supported provider; ACL/private features marked N/A where provider lacks capability.",
+      "goals": [
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "G7"
       ]
     },
     {
@@ -1573,7 +2178,11 @@
               "when": "Click each Main sidebar item, including File Manager. Refresh on #file-manager.",
               "then": "File Manager is in the sidebar. Active item is highlighted. Refresh keeps the same hash screen (#file-manager stays File Manager).",
               "description": "When: Click each Main sidebar item, including File Manager. Refresh on #file-manager.",
-              "expectedResult": "File Manager is in the sidebar. Active item is highlighted. Refresh keeps the same hash screen (#file-manager stays File Manager)."
+              "expectedResult": "File Manager is in the sidebar. Active item is highlighted. Refresh keeps the same hash screen (#file-manager stays File Manager).",
+              "purpose": "Admin navigation consistent; hash routes persist on refresh.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-POL-02",
@@ -1585,7 +2194,11 @@
               "when": "Click around plugin screens used in this pass.",
               "then": "PHP log has no fatals during this pass. No repeated server error popups while clicking around.",
               "description": "When: Click around plugin screens used in this pass.",
-              "expectedResult": "PHP log has no fatals during this pass. No repeated server error popups while clicking around."
+              "expectedResult": "PHP log has no fatals during this pass. No repeated server error popups while clicking around.",
+              "purpose": "Full pass must not produce PHP fatals or repeated admin error popups.",
+              "goals": [
+                "Env"
+              ]
             },
             {
               "id": "TC-POL-03",
@@ -1597,7 +2210,11 @@
               "when": "Sync 100+ files; Verify 100+ files.",
               "then": "Pause/resume and finish.",
               "description": "Given: A larger library, or mark Skipped if not in scope.\nWhen: Sync 100+ files; Verify 100+ files.",
-              "expectedResult": "Pause/resume and finish."
+              "expectedResult": "Pause/resume and finish.",
+              "purpose": "Large verify/sync batches complete with pause/resume — production-scale libraries.",
+              "goals": [
+                "G4"
+              ]
             },
             {
               "id": "TC-POL-04",
@@ -1609,10 +2226,19 @@
               "when": "Leave cache busting / static assets / safety in the intended production state.",
               "then": "Site healthy. Team knows: with safety ON, verify before mass Delete from Server.",
               "description": "When: Leave cache busting / static assets / safety in the intended production state.",
-              "expectedResult": "Site healthy. Team knows: with safety ON, verify before mass Delete from Server."
+              "expectedResult": "Site healthy. Team knows: with safety ON, verify before mass Delete from Server.",
+              "purpose": "Staging left in agreed production state (safety ON, optional features as intended).",
+              "goals": [
+                "G5"
+              ]
             }
           ]
         }
+      ],
+      "purpose": "Navigation, stability, stress, and leaving staging in the intended production configuration.",
+      "goals": [
+        "Env",
+        "G4"
       ]
     }
   ]

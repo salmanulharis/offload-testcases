@@ -80,6 +80,19 @@ test("flatten preserves section and Given/When/Then", () => {
   assert.equal(env.subsectionId, "smoke");
   assert.match(env.given, /delete-local/);
   assert.match(env.then, /Do not run mass remove/);
+  assert.match(env.purpose, /restore path/);
+  assert.deepEqual(env.goals, ["Env"]);
+});
+
+test("every catalog case has checking purpose and goals", () => {
+  const tests = flattenTestCases(definitions);
+  const missing = tests.filter((item) => !item.purpose || !item.goals.length).map((item) => item.id);
+  assert.deepEqual(missing, []);
+  const dash = tests.find((item) => item.id === "TC-DASH-02");
+  assert.ok(dash.goals.includes("G1"));
+  assert.ok(dash.goals.includes("G6"));
+  const fail = tests.find((item) => item.id === "TC-VER-05");
+  assert.match(fail.failImpact, /27\/27/);
 });
 
 test("missing KV results mean not_tested and do not drop definitions", () => {
@@ -233,6 +246,8 @@ test("view filters and failure report use stable case ids", () => {
   assert.equal(matchesQuery(testCase, failed, { view: "todo" }), false);
   assert.match(formatFailureReport(testCase, failed), /TC-ENV-01/);
   assert.match(formatFailureReport(testCase, failed), /AccessDenied/);
+  assert.equal(matchesQuery(testCase, failed, { goal: "Env" }), true);
+  assert.equal(matchesQuery(testCase, failed, { goal: "G2" }), false);
 });
 
 test("section runner starts at in-progress then not tested", () => {
