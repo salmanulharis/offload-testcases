@@ -338,18 +338,34 @@ button.primary:hover { filter: brightness(1.06); }
 
 .search input,
 .section-filter select {
-  min-width: min(100%, 280px);
+  min-width: min(100%, 320px);
+  width: min(100%, 320px);
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.section-filter select { min-width: 200px; }
+.section-filter select { min-width: 220px; width: auto; }
+
+.more-filters {
+  position: relative;
+}
+
+.more-filters summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.more-filters .chips {
+  margin-top: 8px;
+}
 
 .continue-card {
-  margin-top: 12px;
-  padding: 12px 14px;
+  margin-top: 10px;
+  padding: 10px 12px;
   border-radius: var(--radius);
   background: #eef6f4;
   border: 1px solid #cfe3de;
@@ -414,7 +430,7 @@ button.primary:hover { filter: brightness(1.06); }
 
 .workspace {
   display: grid;
-  grid-template-columns: 280px minmax(360px, 1fr) minmax(280px, 340px);
+  grid-template-columns: 300px minmax(360px, 1fr) minmax(280px, 340px);
   gap: 16px;
   align-items: start;
   padding: 14px 0 48px;
@@ -495,10 +511,24 @@ button.primary:hover { filter: brightness(1.06); }
 .nav-section.is-current .mark { color: var(--in-progress); }
 .nav-section.is-failed .mark { color: var(--failed); }
 
+.nav-section .title {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .nav-section small {
   display: block;
   color: var(--muted);
   font-size: 12px;
+}
+
+.section-more { position: relative; }
+
+.section-more .more__menu {
+  right: 0;
+  left: auto;
 }
 
 .nav-section .section-go {
@@ -567,6 +597,7 @@ button.primary:hover { filter: brightness(1.06); }
   padding: 10px 12px;
   text-align: left;
   border-left: 4px solid #c5cdd6;
+  cursor: pointer;
 }
 
 .test-row.is-in_progress { border-left-color: var(--in-progress); }
@@ -795,6 +826,11 @@ kbd {
   .top {
     grid-template-columns: minmax(180px, 1fr) auto auto auto;
     align-items: center;
+  }
+  .sidebar,
+  .detail {
+    position: sticky;
+    top: calc(var(--top) + 12px);
   }
 }
 

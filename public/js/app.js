@@ -70,6 +70,7 @@ const els = {
   counts: document.getElementById("progress-counts"),
   continueCard: document.getElementById("continue-card"),
   quick: document.getElementById("quick-filters"),
+  extra: document.getElementById("extra-filters"),
   activeFilters: document.getElementById("active-filters"),
   sectionFilter: document.getElementById("section-filter"),
   sidebar: document.getElementById("sidebar"),
@@ -98,6 +99,14 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function sectionLabel(section) {
+  const item = typeof section === "string" ? findSection(section) : section;
+  if (!item) return "";
+  const index = state.definitions.sections.findIndex((entry) => entry.id === item.id);
+  const raw = String(item.title || "").replace(/^\d+\.\s*/, "");
+  return `${index + 1}. ${raw}`;
 }
 
 function formatTime(value) {
@@ -500,10 +509,10 @@ function renderOverview() {
     ["all", "All tests"],
     ["failed", `Failed (${counts.failed})`],
     ["blocked", `Blocked (${counts.blocked})`],
-    ["todo", `TODO (${remaining})`],
+    ["not_tested", `Not tested (${counts.not_tested})`],
   ]
     .map(([view, label]) => `<button type="button" data-view="${view}" aria-pressed="${state.view === view}">${escapeHtml(label)}</button>`)
-    .join("");
+    .join("") + (counts.failed ? `<button type="button" data-retest="failed">Retest failed</button>` : "") + (counts.blocked ? `<button type="button" data-retest="blocked">Review blocked</button>` : "");
 
   els.quick.innerHTML = [
     ["view", "all", "All"],
@@ -511,25 +520,31 @@ function renderOverview() {
     ["priority", "P1", "P1"],
     ["view", "failed", "Failed"],
     ["view", "blocked", "Blocked"],
-    ["view", "todo", "TODO"],
-    ["view", "in_progress", "In Progress"],
-    ["view", "skipped", "Skipped"],
-    ["view", "passed", "Passed"],
+    ["view", "not_tested", "Not tested"],
   ]
     .map(([kind, value, label]) => {
       const pressed = kind === "priority" ? state.priority === value : state.view === value;
       return `<button type="button" class="chip" data-${kind}="${value}" aria-pressed="${pressed}">${label}</button>`;
     })
     .join("");
+  if (els.extra) {
+    els.extra.innerHTML = [
+      ["in_progress", "In Progress"],
+      ["skipped", "Skipped"],
+      ["passed", "Passed"],
+    ]
+      .map(([value, label]) => `<button type="button" class="chip" data-view="${value}" aria-pressed="${state.view === value}">${label}</button>`)
+      .join("");
+  }
 
   els.sectionFilter.innerHTML = `<option value="">All sections</option>${state.definitions.sections
-    .map((section) => `<option value="${escapeHtml(section.id)}" ${state.sectionId === section.id ? "selected" : ""}>${escapeHtml(section.title)}</option>`)
+    .map((section) => `<option value="${escapeHtml(section.id)}" ${state.sectionId === section.id ? "selected" : ""}>${escapeHtml(sectionLabel(section))}</option>`)
     .join("")}`;
 
   const chips = [];
-  if (state.view !== "all") chips.push(["view", `Status: ${state.view === "todo" ? "TODO" : STATUS_LABELS[state.view] || state.view}`]);
+  if (state.view !== "all") chips.push(["view", `Status: ${STATUS_LABELS[state.view] || state.view}`]);
   if (state.priority !== "all") chips.push(["priority", `Priority: ${state.priority}`]);
-  if (state.sectionId) chips.push(["section", `Section: ${findSection(state.sectionId)?.title || state.sectionId}`]);
+  if (state.sectionId) chips.push(["section", `Section: ${sectionLabel(state.sectionId)}`]);
   els.activeFilters.innerHTML = chips
     .map(([kind, label]) => `<button type="button" data-clear="${kind}">${escapeHtml(label)} ×</button>`)
     .join("");
@@ -568,9 +583,9 @@ function renderContinueCard(counts, remaining, outcome) {
       <h2 id="continue-heading">Section complete</h2>
       <div class="continue-card__row">
         <div>
-          <strong>${escapeHtml(section.title)}</strong>
+          <strong>${escapeHtml(sectionLabel(section))}</strong>
           <p class="muted">${sectionCounts.resolved} / ${sectionCounts.total} completed</p>
-          <p>Next: ${escapeHtml(nextSection.title)}</p>
+          <p>Next: ${escapeHtml(sectionLabel(nextSection))}</p>
         </div>
         <button type="button" class="primary" data-start-section="${escapeHtml(nextSection.id)}">Continue to next section →</button>
       </div>`;
@@ -585,12 +600,11 @@ function renderContinueCard(counts, remaining, outcome) {
       <h2 id="continue-heading">Continue testing</h2>
       <div class="continue-card__row">
         <div>
-          <p class="muted">You are currently testing</p>
-          <strong>${escapeHtml(section.title)}</strong>
-          <p>${index + 1} of ${queue.length} · ${escapeHtml(saved.id)}</p>
+          <p>${escapeHtml(sectionLabel(section))} · Test ${index + 1} of ${queue.length}</p>
+          <strong>${escapeHtml(saved.id)}${saved.priority ? ` · ${escapeHtml(saved.priority)}` : ""}</strong>
           <p class="muted">${escapeHtml(saved.title)}</p>
         </div>
-        <button type="button" class="primary" data-resume>Resume section →</button>
+        <button type="button" class="primary" data-resume>Resume testing →</button>
       </div>`;
     return;
   }
@@ -602,12 +616,10 @@ function renderContinueCard(counts, remaining, outcome) {
     <h2 id="continue-heading">Continue testing</h2>
     <div class="continue-card__row">
       <div>
-        <p class="muted">Overall progress · ${counts.resolved} / ${counts.total} completed</p>
-        <strong>${escapeHtml(nextTest?.id || next?.title || "Next section")}</strong>
-        <p>${escapeHtml(nextTest?.priority || "")} · ${escapeHtml(nextTest?.sectionTitle || "")}</p>
+        <strong>${escapeHtml(nextTest?.id || "Next section")}${nextTest?.priority ? ` · ${escapeHtml(nextTest.priority)}` : ""}</strong>
+        <p>${escapeHtml(nextTest ? sectionLabel(nextTest.sectionId) : sectionLabel(next))}</p>
         <p class="muted">${escapeHtml(nextTest?.title || "Start the first incomplete section")}</p>
       </div>
-      <button type="button" class="primary" data-continue>Continue testing →</button>
     </div>`;
 }
 
@@ -628,7 +640,7 @@ function renderSidebar() {
       return `<article class="nav-section ${current ? "is-active" : ""} ${remaining === 0 ? "is-done" : ""}">
         <button type="button" class="nav-section__top" data-section="${escapeHtml(section.id)}">
           <span class="mark">${mark}</span>
-          <span>${index + 1}. ${escapeHtml(section.title)}<small>${counts.total} tests · ${counts.resolved} completed</small></span>
+          <span class="title">${escapeHtml(sectionLabel(section))}<small>${counts.total} tests · ${counts.resolved} completed</small></span>
         </button>
         <span class="mini-bar"><span style="width:${counts.resolvedPercent}%"></span></span>
         <button type="button" class="section-go" data-start-section="${escapeHtml(section.id)}" data-mode="${remaining === 0 && counts.failed ? "failed" : "section"}">${action}</button>
@@ -669,16 +681,20 @@ function renderList() {
       return `<section class="section" id="section-${escapeHtml(section.id)}">
         <div class="section__head">
           <button type="button" data-collapse="${escapeHtml(section.id)}" class="section__grow">
-            <h3>${escapeHtml(section.title)}</h3>
-            <p class="meta">${counts.resolved} / ${counts.total} · ${counts.failed} failed · ${remainingCount(counts)} remaining</p>
+            <h3>${escapeHtml(sectionLabel(section))}</h3>
+            <p class="meta">${counts.resolved} / ${counts.total} · ${counts.passed} passed · ${counts.failed} failed · ${remainingCount(counts)} remaining</p>
           </button>
-          <select data-bulk data-section="${escapeHtml(section.id)}">
-            <option value="">Section actions</option>
-            <option value="continue">Continue section</option>
-            <option value="failed">Review failed</option>
-            <option value="export">Export section results</option>
-            <option value="reset">Restart section</option>
-          </select>
+          <div class="section__tools">
+            <button type="button" class="primary" data-start-section="${escapeHtml(section.id)}">${remainingCount(counts) === 0 ? "Review →" : counts.resolved ? "Continue section →" : "Start section →"}</button>
+            <div class="section-more">
+              <button type="button" data-menu-toggle aria-expanded="false" aria-label="Section actions">⋮</button>
+              <div class="more__menu" hidden>
+                <button type="button" data-bulk-action="failed" data-section="${escapeHtml(section.id)}">Review failed</button>
+                <button type="button" data-bulk-action="export" data-section="${escapeHtml(section.id)}">Export section</button>
+                <button type="button" data-bulk-action="reset" data-section="${escapeHtml(section.id)}" class="danger">Restart section</button>
+              </div>
+            </div>
+          </div>
         </div>
         ${body}
       </section>`;
@@ -689,19 +705,21 @@ function renderList() {
 function renderRow(test) {
   const result = getResult(state.results, test.id);
   const status = displayStatus(result.status);
-  return `<button type="button" class="test-row is-${status}${state.activeTestId === test.id ? " is-active" : ""}" data-test="${escapeHtml(test.id)}">
+  const selected = state.activeTestId === test.id;
+  return `<article class="test-row is-${status}${selected ? " is-active" : ""}" data-test="${escapeHtml(test.id)}">
     ${badge(status)}
     <span>
       <span class="id">${escapeHtml(test.id)}${test.priority ? ` <span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""}</span>
       <h4>${escapeHtml(test.title)}</h4>
     </span>
-  </button>`;
+    ${selected ? `<button type="button" data-start-section="${escapeHtml(test.sectionId)}" data-test-id="${escapeHtml(test.id)}">Open test →</button>` : ""}
+  </article>`;
 }
 
 function renderDetail() {
   const test = findTest(state.activeTestId);
   if (!test) {
-    els.detail.innerHTML = `<h2>Execute</h2><p class="muted">Select a case for details, or use Continue testing to start the sequential runner.</p>`;
+    els.detail.innerHTML = `<h2>Execute</h2><p><strong>No test selected</strong></p><p class="muted">Select a test from the list, or use Continue testing in the header.</p>`;
     return;
   }
   const result = getResult(state.results, test.id);
@@ -711,11 +729,10 @@ function renderDetail() {
     <h2>${inThis ? "Current test" : "Execute"}</h2>
     <p class="id">${escapeHtml(test.id)}</p>
     <h3>${escapeHtml(test.title)}</h3>
-    <p class="muted">${escapeHtml(test.sectionTitle)}${test.subsectionTitle ? ` → ${escapeHtml(test.subsectionTitle)}` : ""}</p>
+    <p class="muted">${escapeHtml(sectionLabel(test.sectionId))}${test.subsectionTitle ? ` → ${escapeHtml(test.subsectionTitle)}` : ""}</p>
     ${test.priority ? `<p><span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span></p>` : ""}
-    ${badge(status)}
-    <p class="muted" style="margin-top:12px">Use the runner to execute Given / When / Then one case at a time.</p>
-    <button type="button" class="primary" data-start-section="${escapeHtml(test.sectionId)}" data-test-id="${escapeHtml(test.id)}">${inThis ? "Open runner" : "Start this test"}</button>
+    <p>${badge(status)}</p>
+    <button type="button" class="primary" data-start-section="${escapeHtml(test.sectionId)}" data-test-id="${escapeHtml(test.id)}">${inThis ? "Open test →" : "Start this test →"}</button>
     <p><button type="button" data-copy-link="${escapeHtml(test.id)}">Copy link</button></p>
   `;
 }
@@ -733,9 +750,11 @@ function renderRunner() {
       ? "Review blocked"
       : state.runner.mode === "p0"
         ? "P0 queue"
-        : state.runner.mode === "todo"
-          ? "TODO queue"
-          : section?.title || "Sequential runner";
+        : state.runner.mode === "todo" || state.runner.mode === "not_tested"
+          ? "Queue: Not tested"
+          : section
+            ? `Queue: ${sectionLabel(section)}`
+            : "Sequential runner";
 
   if (state.runner.done || !test) {
     const next = nextIncompleteSection(state.definitions, state.results, state.runner.sectionId);
@@ -749,7 +768,7 @@ function renderRunner() {
         <div class="actions">
           <button type="button" data-back>Review results</button>
           ${counts.failed ? `<button type="button" data-start-section="${escapeHtml(state.runner.sectionId)}" data-mode="failed">Retest failed tests</button>` : ""}
-          ${next ? `<button type="button" class="primary" data-start-section="${escapeHtml(next.id)}">Continue to ${escapeHtml(next.title)} →</button>` : `<button type="button" class="primary" data-back>Back to overview</button>`}
+          ${next ? `<button type="button" class="primary" data-start-section="${escapeHtml(next.id)}">Continue to ${escapeHtml(sectionLabel(next))} →</button>` : `<button type="button" class="primary" data-back>Back to overview</button>`}
         </div>
       </article>`;
     return;
@@ -765,7 +784,7 @@ function renderRunner() {
     <article class="runner">
       <div class="runner__top">
         <button type="button" data-back>← Back to overview</button>
-        <strong>${escapeHtml(title)}</strong>
+        <strong>${escapeHtml(state.runner.mode === "section" && section ? sectionLabel(section) : title)}</strong>
       </div>
       <p class="runner__meta">Test ${index + 1} of ${queue.length} · ${counts.resolvedPercent}% complete</p>
       <div class="bar"><span style="width:${counts.resolvedPercent}%"></span></div>
@@ -908,6 +927,11 @@ document.addEventListener("click", (event) => {
     els.moreMenu.hidden = true;
     els.more.setAttribute("aria-expanded", "false");
   }
+  if (!event.target.closest(".section-more")) {
+    document.querySelectorAll(".section-more .more__menu").forEach((el) => {
+      el.hidden = true;
+    });
+  }
 });
 
 els.importFile.addEventListener("change", async (event) => {
@@ -984,8 +1008,19 @@ function handleViewClick(event) {
   setView(state.view === button.dataset.view && button.dataset.view !== "all" ? "all" : button.dataset.view);
 }
 
-els.views.addEventListener("click", handleViewClick);
+els.views.addEventListener("click", (event) => {
+  if (event.target.closest("[data-retest]")) {
+    handleAppClick(event);
+    return;
+  }
+  handleViewClick(event);
+});
 els.counts.addEventListener("click", handleViewClick);
+els.extra?.addEventListener("click", (event) => {
+  const view = event.target.closest("[data-view]");
+  if (view) setView(state.view === view.dataset.view ? "all" : view.dataset.view);
+});
+
 els.quick.addEventListener("click", (event) => {
   const view = event.target.closest("[data-view]");
   const priority = event.target.closest("[data-priority]");
@@ -1035,9 +1070,11 @@ function handleAppClick(event) {
     continueTesting();
     return;
   }
-  if (event.target.closest("[data-retest='failed']")) {
-    const queue = buildRunnerQueue(state.definitions, state.results, { mode: "failed" });
-    openRunner({ mode: "failed", sectionId: "", testId: queue[0]?.id || "", done: !queue.length });
+  const retest = event.target.closest("[data-retest]");
+  if (retest) {
+    const mode = retest.dataset.retest;
+    const queue = buildRunnerQueue(state.definitions, state.results, { mode });
+    openRunner({ mode, sectionId: "", testId: queue[0]?.id || "", done: !queue.length });
     return;
   }
   const start = event.target.closest("[data-start-section]");
@@ -1065,6 +1102,23 @@ els.sidebar.addEventListener("click", (event) => {
 });
 
 function handleWorkspaceClick(event) {
+  const toggle = event.target.closest("[data-menu-toggle]");
+  if (toggle) {
+    const menu = toggle.parentElement.querySelector(".more__menu");
+    const open = menu.hidden;
+    document.querySelectorAll(".section-more .more__menu").forEach((el) => {
+      el.hidden = true;
+    });
+    menu.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+    event.stopPropagation();
+    return;
+  }
+  const bulk = event.target.closest("[data-bulk-action]");
+  if (bulk) {
+    applyBulk(bulk.dataset.bulkAction, bulk.dataset.section);
+    return;
+  }
   if (event.target.closest("[data-back]")) {
     closeRunner();
     return;
@@ -1156,19 +1210,14 @@ els.runner.addEventListener("input", (event) => {
   scheduleSave();
 });
 
-els.main.addEventListener("change", async (event) => {
-  const select = event.target.closest("[data-bulk]");
-  if (!select) return;
-  const action = select.value;
-  select.value = "";
-  if (!action) return;
-  const filter = { sectionId: select.dataset.section };
+async function applyBulk(action, sectionId) {
+  const filter = { sectionId };
   if (action === "continue") {
-    startSection(filter.sectionId);
+    startSection(sectionId);
     return;
   }
   if (action === "failed") {
-    startSection(filter.sectionId, "failed");
+    startSection(sectionId, "failed");
     return;
   }
   if (action === "export") {
@@ -1178,7 +1227,7 @@ els.main.addEventListener("change", async (event) => {
   if (action === "reset") {
     const ok = await confirmAction(
       "Restart this section?",
-      "This will clear pass/fail results, notes, and failure details for these tests. Definitions are kept.",
+      "This will clear results for this section only. Test case definitions stay in the repo.",
       "Restart section"
     );
     if (ok !== true) return;
@@ -1186,7 +1235,7 @@ els.main.addEventListener("change", async (event) => {
     render();
     persist();
   }
-});
+}
 
 els.failForm.addEventListener("submit", (event) => {
   event.preventDefault();

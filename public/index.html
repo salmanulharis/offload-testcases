@@ -29,12 +29,12 @@
           <button type="button" id="btn-more" aria-expanded="false" aria-controls="more-menu">More</button>
           <div id="more-menu" class="more__menu" hidden>
             <p class="more__label">Data</p>
-            <button type="button" id="btn-export">Export JSON</button>
-            <button type="button" id="btn-import">Import JSON</button>
+            <button type="button" id="btn-export">↓ Export JSON</button>
+            <button type="button" id="btn-import">↑ Import JSON</button>
             <p class="more__label">Test run</p>
-            <button type="button" id="btn-reset-all" class="danger">Restart full test</button>
+            <button type="button" id="btn-reset-all" class="danger">↻ Restart full test</button>
             <p class="more__label">Help</p>
-            <button type="button" id="btn-keys">Keyboard shortcuts</button>
+            <button type="button" id="btn-keys">⌨ Keyboard shortcuts</button>
           </div>
         </div>
         <input id="import-file" type="file" accept="application/json,.json" hidden />
@@ -71,6 +71,10 @@
           <select id="section-filter" aria-label="Filter by section"></select>
         </label>
         <div id="quick-filters" class="chips" role="group" aria-label="Quick filters"></div>
+        <details class="more-filters">
+          <summary>More filters</summary>
+          <div id="extra-filters" class="chips"></div>
+        </details>
         <div class="toolbar__tools">
           <button type="button" id="btn-expand-all">Expand all</button>
           <button type="button" id="btn-collapse-all">Collapse all</button>
