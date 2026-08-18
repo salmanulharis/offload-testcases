@@ -43,6 +43,11 @@ const state = {
   sync: "loading",
   message: "",
   collapsed: new Set(),
+  collapseReady: false,
+  openPopover: null,
+  selectedSectionId: "",
+  sidebarCollapsed: false,
+  sidebarDrawerOpen: false,
   lastError: "",
 };
 
@@ -74,6 +79,8 @@ const els = {
   activeFilters: document.getElementById("active-filters"),
   sectionFilter: document.getElementById("section-filter"),
   sidebar: document.getElementById("sidebar"),
+  sidebarBackdrop: document.getElementById("sidebar-backdrop"),
+  sectionsBtn: document.getElementById("btn-sections"),
   search: document.getElementById("search"),
   main: document.getElementById("main"),
   detail: document.getElementById("detail"),
@@ -99,6 +106,125 @@ function escapeHtml(value) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function setPopover(id) {
+  state.openPopover = state.openPopover === id ? null : id;
+  applyPopovers();
+}
+
+function closePopover() {
+  state.openPopover = null;
+  applyPopovers();
+}
+
+function applyPopovers() {
+  const moreOpen = state.openPopover === "more";
+  if (els.moreMenu) els.moreMenu.hidden = !moreOpen;
+  if (els.more) {
+    els.more.setAttribute("aria-expanded", String(moreOpen));
+    els.more.textContent = moreOpen ? "More ▾" : "More";
+  }
+  document.querySelectorAll("[data-popover]").forEach((el) => {
+    el.hidden = state.openPopover !== el.dataset.popover;
+    const toggle = el.parentElement?.querySelector("[data-menu-toggle]");
+    toggle?.setAttribute("aria-expanded", String(!el.hidden));
+  });
+  const open = document.querySelector(".more__menu:not([hidden])");
+  if (!open) return;
+  open.style.top = "";
+  open.style.bottom = "";
+  const rect = open.getBoundingClientRect();
+  if (rect.bottom > window.innerHeight - 8) {
+    open.style.top = "auto";
+    open.style.bottom = "calc(100% + 6px)";
+  }
+}
+
+function applyDrawer() {
+  els.sidebar?.classList.toggle("is-drawer-open", state.sidebarDrawerOpen);
+  if (els.sidebarBackdrop) {
+    els.sidebarBackdrop.hidden = !state.sidebarDrawerOpen;
+    els.sidebarBackdrop.classList.toggle("is-open", state.sidebarDrawerOpen);
+  }
+  document.body.classList.toggle("is-drawer-open", state.sidebarDrawerOpen);
+}
+
+function defaultSectionId() {
+  return firstIncompleteSection(state.definitions, state.results)?.id || state.definitions.sections[0]?.id || "";
+}
+
+function caseUrl(id) {
+  const url = new URL(location.href);
+  if (id) {
+    url.searchParams.set("case", id);
+    url.hash = encodeURIComponent(id);
+  } else {
+    url.searchParams.delete("case");
+    url.hash = "";
+  }
+  return url;
+}
+
+function copyTestLink(id) {
+  const url = caseUrl(id).toString();
+  navigator.clipboard?.writeText(url);
+  showToast("Link copied");
+}
+
+function deepLinkId() {
+  const fromQuery = new URLSearchParams(location.search).get("case");
+  if (fromQuery) return fromQuery;
+  return decodeURIComponent(location.hash.replace(/^#/, ""));
+}
+
+function revealSection(sectionId, { scroll = true } = {}) {
+  if (!sectionId || !findSection(sectionId)) return;
+  state.selectedSectionId = sectionId;
+  state.collapsed.delete(sectionId);
+  persistCollapsed();
+  state.sidebarDrawerOpen = false;
+  if (state.sectionId && state.sectionId !== sectionId) state.sectionId = "";
+  render();
+  if (scroll) {
+    requestAnimationFrame(() => {
+      document.getElementById(`section-${sectionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
+function persistCollapsed() {
+  try {
+    localStorage.setItem("offload-collapsed", JSON.stringify([...state.collapsed]));
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistSidebar() {
+  try {
+    localStorage.setItem("offload-sidebar", state.sidebarCollapsed ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
+function ensureCollapseDefaults() {
+  if (state.collapseReady || !state.definitions) return;
+  state.collapseReady = true;
+  try {
+    const saved = JSON.parse(localStorage.getItem("offload-collapsed") || "null");
+    if (Array.isArray(saved)) {
+      state.collapsed = new Set(saved);
+      return;
+    }
+  } catch {
+    /* use default */
+  }
+  const keep = firstIncompleteSection(state.definitions, state.results)?.id || state.definitions.sections[0]?.id;
+  for (const section of state.definitions.sections) {
+    if (section.id !== keep) state.collapsed.add(section.id);
+  }
 }
 
 function sectionLabel(section) {
@@ -239,6 +365,11 @@ function persistRunner() {
 }
 
 function restoreRunner() {
+  try {
+    state.sidebarCollapsed = localStorage.getItem("offload-sidebar") === "1";
+  } catch {
+    state.sidebarCollapsed = false;
+  }
   try {
     const saved = JSON.parse(localStorage.getItem(RUNNER_KEY) || "null");
     if (!saved?.runner) return;
@@ -457,14 +588,17 @@ function requestStatus(id, status) {
 
 function selectTest(id) {
   state.activeTestId = id || "";
-  if (id) history.replaceState(null, "", `#${encodeURIComponent(id)}`);
-  persistRunner();
-  if (state.screen === "overview") {
-    renderDetail();
-    els.main.querySelectorAll("[data-test]").forEach((row) => {
-      row.classList.toggle("is-active", row.dataset.test === id);
-    });
+  const test = findTest(id);
+  if (test) {
+    state.selectedSectionId = test.sectionId;
+    if (state.collapsed.has(test.sectionId)) {
+      state.collapsed.delete(test.sectionId);
+      persistCollapsed();
+    }
   }
+  history.replaceState(null, "", caseUrl(id));
+  persistRunner();
+  if (state.screen === "overview") render();
 }
 
 function renderShell() {
@@ -620,30 +754,41 @@ function renderContinueCard(counts, remaining, outcome) {
         <p>${escapeHtml(nextTest ? sectionLabel(nextTest.sectionId) : sectionLabel(next))}</p>
         <p class="muted">${escapeHtml(nextTest?.title || "Start the first incomplete section")}</p>
       </div>
+      <button type="button" class="primary" data-continue>Continue testing →</button>
     </div>`;
 }
 
 function renderSidebar() {
+  if (!state.selectedSectionId) state.selectedSectionId = defaultSectionId();
+  const compact = state.sidebarCollapsed && window.matchMedia("(min-width: 1100px)").matches && !state.sidebarDrawerOpen;
+  els.sidebar.classList.toggle("is-collapsed", compact);
+  els.sidebar.parentElement?.classList.toggle("is-sidebar-collapsed", compact);
+  applyDrawer();
   const map = Array.isArray(state.definitions.pageMap) ? state.definitions.pageMap : [];
-  const howto = state.definitions.description
+  const howto = !compact && state.definitions.description
     ? `<details class="howto"><summary>How to run this pass</summary><p class="muted">${escapeHtml(state.definitions.description)}</p>${map
         .map((item) => `<p><strong>${escapeHtml(item.screen)}</strong><br><span class="muted">${escapeHtml(item.path)}</span>${item.url ? `<br><code>${escapeHtml(item.url)}</code>` : ""}</p>`)
         .join("")}</details>`
     : "";
-  els.sidebar.innerHTML = `<h2>Test sections</h2>${state.definitions.sections
+  els.sidebar.innerHTML = `<div class="sidebar__head">
+      <h2>Test sections</h2>
+      <button type="button" class="sidebar-close" data-close-drawer aria-label="Close sections">×</button>
+      <button type="button" class="sidebar-collapse" data-toggle-sidebar aria-label="${compact ? "Expand sections" : "Collapse sections"}">${compact ? "→" : "←"}</button>
+    </div>${state.definitions.sections
     .map((section, index) => {
       const counts = countStatuses({ sections: [section] }, state.results);
       const remaining = remainingCount(counts);
-      const current = state.runner.sectionId === section.id || state.sectionId === section.id;
-      const mark = remaining === 0 ? "✓" : current ? "●" : "○";
-      const action = remaining === 0 ? "Review →" : counts.resolved ? "Continue section →" : "Start section →";
-      return `<article class="nav-section ${current ? "is-active" : ""} ${remaining === 0 ? "is-done" : ""}">
-        <button type="button" class="nav-section__top" data-section="${escapeHtml(section.id)}">
-          <span class="mark">${mark}</span>
-          <span class="title">${escapeHtml(sectionLabel(section))}<small>${counts.total} tests · ${counts.resolved} completed</small></span>
+      const current = state.selectedSectionId === section.id;
+      const mark = remaining === 0 ? "✓" : counts.resolved ? "●" : "○";
+      const label = sectionLabel(section);
+      const action = remaining === 0 ? "Review section" : counts.resolved ? "Continue section" : "Start section";
+      return `<article class="nav-section ${current ? "is-active" : ""} ${remaining === 0 ? "is-done" : counts.resolved ? "is-current" : ""}">
+        <button type="button" class="nav-section__top" data-section="${escapeHtml(section.id)}" title="${escapeHtml(label)}">
+          <span class="mark" aria-hidden="true">${mark}</span>
+          <span class="title">${compact ? `<span class="nav-num">${index + 1}</span>` : escapeHtml(label)}<small>${counts.resolved} / ${counts.total}${compact ? "" : " completed"}</small></span>
         </button>
-        <span class="mini-bar"><span style="width:${counts.resolvedPercent}%"></span></span>
-        <button type="button" class="section-go" data-start-section="${escapeHtml(section.id)}" data-mode="${remaining === 0 && counts.failed ? "failed" : "section"}">${action}</button>
+        <span class="mini-bar" aria-hidden="true"><span style="width:${counts.resolvedPercent}%"></span></span>
+        <button type="button" class="section-go" data-start-section="${escapeHtml(section.id)}">${action}</button>
       </article>`;
     })
     .join("")}${howto}`;
@@ -678,17 +823,21 @@ function renderList() {
               .join("")}
             ${tests.filter((test) => !test.subsectionId).map(renderRow).join("")}
           </div>`;
-      return `<section class="section" id="section-${escapeHtml(section.id)}">
+      const action = remainingCount(counts) === 0 ? "Review section" : counts.resolved ? "Continue section" : "Start section";
+      return `<section class="section ${state.selectedSectionId === section.id ? "is-current" : ""}" id="section-${escapeHtml(section.id)}">
         <div class="section__head">
-          <button type="button" data-collapse="${escapeHtml(section.id)}" class="section__grow">
-            <h3>${escapeHtml(sectionLabel(section))}</h3>
-            <p class="meta">${counts.resolved} / ${counts.total} · ${counts.passed} passed · ${counts.failed} failed · ${remainingCount(counts)} remaining</p>
+          <button type="button" data-collapse="${escapeHtml(section.id)}" class="section__grow" aria-expanded="${!collapsed}">
+            <span class="chevron" aria-hidden="true">${collapsed ? "▶" : "▼"}</span>
+            <span>
+              <h3>${escapeHtml(sectionLabel(section))}</h3>
+              <p class="meta">${counts.resolved} / ${counts.total} · ${counts.passed} passed · ${counts.failed} failed · ${remainingCount(counts)} remaining</p>
+            </span>
           </button>
           <div class="section__tools">
-            <button type="button" class="primary" data-start-section="${escapeHtml(section.id)}">${remainingCount(counts) === 0 ? "Review →" : counts.resolved ? "Continue section →" : "Start section →"}</button>
+            <button type="button" class="primary" data-start-section="${escapeHtml(section.id)}">${action}</button>
             <div class="section-more">
               <button type="button" data-menu-toggle aria-expanded="false" aria-label="Section actions">⋮</button>
-              <div class="more__menu" hidden>
+              <div class="more__menu" data-popover="section:${escapeHtml(section.id)}" hidden>
                 <button type="button" data-bulk-action="failed" data-section="${escapeHtml(section.id)}">Review failed</button>
                 <button type="button" data-bulk-action="export" data-section="${escapeHtml(section.id)}">Export section</button>
                 <button type="button" data-bulk-action="reset" data-section="${escapeHtml(section.id)}" class="danger">Restart section</button>
@@ -719,7 +868,10 @@ function renderRow(test) {
 function renderDetail() {
   const test = findTest(state.activeTestId);
   if (!test) {
-    els.detail.innerHTML = `<h2>Execute</h2><p><strong>No test selected</strong></p><p class="muted">Select a test from the list, or use Continue testing in the header.</p>`;
+    els.detail.innerHTML = `<h2>Execute</h2>
+      <p><strong>Select a test to view details</strong></p>
+      <p class="muted">or use Continue Testing to start sequential execution.</p>
+      <p><button type="button" class="primary" data-continue>Continue testing →</button></p>`;
     return;
   }
   const result = getResult(state.results, test.id);
@@ -828,6 +980,7 @@ function renderRunner() {
 
 function render() {
   if (!state.definitions) return;
+  ensureCollapseDefaults();
   els.title.textContent = state.definitions.title || "Offload Test Cases";
   document.title = state.definitions.title || "Offload Test Cases";
   renderShell();
@@ -839,6 +992,7 @@ function render() {
   renderSidebar();
   renderList();
   renderDetail();
+  applyPopovers();
 }
 
 async function loadDefinitions() {
@@ -858,7 +1012,7 @@ async function refreshResults({ quiet = false } = {}) {
 }
 
 function openFromHash() {
-  const id = decodeURIComponent(location.hash.replace(/^#/, ""));
+  const id = deepLinkId();
   if (id && findTest(id)) selectTest(id);
 }
 
@@ -904,11 +1058,17 @@ document.getElementById("btn-refresh").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-continue").addEventListener("click", continueTesting);
-document.getElementById("btn-export").addEventListener("click", () => exportResults());
-document.getElementById("btn-import").addEventListener("click", () => els.importFile.click());
+document.getElementById("btn-export").addEventListener("click", () => {
+  closePopover();
+  exportResults();
+});
+document.getElementById("btn-import").addEventListener("click", () => {
+  closePopover();
+  els.importFile.click();
+});
 document.getElementById("btn-keys").addEventListener("click", () => {
+  closePopover();
   els.keysModal.hidden = false;
-  els.moreMenu.hidden = true;
 });
 document.getElementById("keys-close").addEventListener("click", () => {
   els.keysModal.hidden = true;
@@ -917,21 +1077,21 @@ els.keysModal.addEventListener("click", (event) => {
   if (event.target === els.keysModal) els.keysModal.hidden = true;
 });
 
-els.more.addEventListener("click", () => {
-  const open = els.moreMenu.hidden;
-  els.moreMenu.hidden = !open;
-  els.more.setAttribute("aria-expanded", String(open));
+els.more.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setPopover("more");
 });
 document.addEventListener("click", (event) => {
-  if (!event.target.closest(".more")) {
-    els.moreMenu.hidden = true;
-    els.more.setAttribute("aria-expanded", "false");
-  }
-  if (!event.target.closest(".section-more")) {
-    document.querySelectorAll(".section-more .more__menu").forEach((el) => {
-      el.hidden = true;
-    });
-  }
+  if (event.target.closest(".more") || event.target.closest(".section-more")) return;
+  closePopover();
+});
+els.sectionsBtn?.addEventListener("click", () => {
+  state.sidebarDrawerOpen = true;
+  applyDrawer();
+});
+els.sidebarBackdrop?.addEventListener("click", () => {
+  state.sidebarDrawerOpen = false;
+  applyDrawer();
 });
 
 els.importFile.addEventListener("change", async (event) => {
@@ -994,11 +1154,15 @@ els.sectionFilter.addEventListener("change", (event) => {
   render();
 });
 document.getElementById("btn-expand-all").addEventListener("click", () => {
+  closePopover();
   state.collapsed.clear();
+  persistCollapsed();
   render();
 });
 document.getElementById("btn-collapse-all").addEventListener("click", () => {
+  closePopover();
   for (const section of state.definitions.sections) state.collapsed.add(section.id);
+  persistCollapsed();
   render();
 });
 
@@ -1089,28 +1253,31 @@ function handleAppClick(event) {
 els.continueCard.addEventListener("click", handleAppClick);
 els.complete.addEventListener("click", handleAppClick);
 els.sidebar.addEventListener("click", (event) => {
+  if (event.target.closest("[data-toggle-sidebar]")) {
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    persistSidebar();
+    render();
+    return;
+  }
+  if (event.target.closest("[data-close-drawer]")) {
+    state.sidebarDrawerOpen = false;
+    applyDrawer();
+    return;
+  }
   const start = event.target.closest("[data-start-section]");
   if (start) {
     handleStartSection(start);
     return;
   }
   const button = event.target.closest("[data-section]");
-  if (button) {
-    state.sectionId = state.sectionId === button.dataset.section ? "" : button.dataset.section;
-    render();
-  }
+  if (button) revealSection(button.dataset.section);
 });
 
 function handleWorkspaceClick(event) {
   const toggle = event.target.closest("[data-menu-toggle]");
   if (toggle) {
-    const menu = toggle.parentElement.querySelector(".more__menu");
-    const open = menu.hidden;
-    document.querySelectorAll(".section-more .more__menu").forEach((el) => {
-      el.hidden = true;
-    });
-    menu.hidden = !open;
-    toggle.setAttribute("aria-expanded", String(open));
+    const menu = toggle.parentElement.querySelector("[data-popover]");
+    if (menu?.dataset.popover) setPopover(menu.dataset.popover);
     event.stopPropagation();
     return;
   }
@@ -1134,8 +1301,7 @@ function handleWorkspaceClick(event) {
   }
   const copyLink = event.target.closest("[data-copy-link]");
   if (copyLink) {
-    navigator.clipboard?.writeText(`${location.origin}${location.pathname}#${encodeURIComponent(copyLink.dataset.copyLink)}`);
-    showToast("Link copied");
+    copyTestLink(copyLink.dataset.copyLink);
     return;
   }
   const copyFailure = event.target.closest("[data-copy-failure]");
@@ -1146,9 +1312,12 @@ function handleWorkspaceClick(event) {
   }
   const collapse = event.target.closest("[data-collapse]");
   if (collapse) {
+    closePopover();
     const id = collapse.dataset.collapse;
     if (state.collapsed.has(id)) state.collapsed.delete(id);
     else state.collapsed.add(id);
+    state.selectedSectionId = id;
+    persistCollapsed();
     render();
     return;
   }
@@ -1211,6 +1380,7 @@ els.runner.addEventListener("input", (event) => {
 });
 
 async function applyBulk(action, sectionId) {
+  closePopover();
   const filter = { sectionId };
   if (action === "continue") {
     startSection(sectionId);
@@ -1284,10 +1454,18 @@ els.savedAt.addEventListener("click", (event) => {
 window.addEventListener("keydown", (event) => {
   if (event.target.matches("input, textarea, select")) return;
   if (event.key === "Escape") {
+    if (state.openPopover) {
+      closePopover();
+      return;
+    }
+    if (state.sidebarDrawerOpen) {
+      state.sidebarDrawerOpen = false;
+      applyDrawer();
+      return;
+    }
     els.keysModal.hidden = true;
     els.failModal.hidden = true;
     els.blockModal.hidden = true;
-    els.moreMenu.hidden = true;
     closeModal(false);
     return;
   }

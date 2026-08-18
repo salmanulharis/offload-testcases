@@ -175,15 +175,17 @@ button.primary:hover { filter: brightness(1.06); }
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
-  display: grid;
   min-width: 200px;
   padding: 6px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
   box-shadow: var(--shadow);
-  z-index: 25;
+  z-index: 50;
 }
+
+.more__menu[hidden] { display: none; }
+.more__menu:not([hidden]) { display: grid; }
 
 .more__label {
   margin: 8px 8px 2px;
@@ -236,7 +238,7 @@ button.primary:hover { filter: brightness(1.06); }
 .toolbar,
 .filter-chips,
 .workspace {
-  width: min(var(--max), calc(100% - 48px));
+  width: min(var(--max), calc(100% - 32px));
   margin-left: auto;
   margin-right: auto;
 }
@@ -338,15 +340,19 @@ button.primary:hover { filter: brightness(1.06); }
 
 .search input,
 .section-filter select {
-  min-width: min(100%, 320px);
-  width: min(100%, 320px);
+  min-width: min(100%, 240px);
+  width: min(100%, 260px);
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-.section-filter select { min-width: 220px; width: auto; }
+.section-filter select { min-width: 180px; width: auto; }
+
+.sections-open,
+.sidebar-close,
+.sidebar-backdrop { display: none; }
 
 .more-filters {
   position: relative;
@@ -430,7 +436,7 @@ button.primary:hover { filter: brightness(1.06); }
 
 .workspace {
   display: grid;
-  grid-template-columns: 300px minmax(360px, 1fr) minmax(280px, 340px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 340px);
   gap: 16px;
   align-items: start;
   padding: 14px 0 48px;
@@ -463,6 +469,47 @@ button.primary:hover { filter: brightness(1.06); }
   color: var(--accent);
 }
 
+.sidebar__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sidebar__head h2 { margin: 0; }
+
+.workspace.is-sidebar-collapsed {
+  grid-template-columns: 72px minmax(0, 1fr) minmax(280px, 340px);
+}
+
+.sidebar.is-collapsed .mini-bar,
+.sidebar.is-collapsed .section-go,
+.sidebar.is-collapsed .howto,
+.sidebar.is-collapsed .sidebar__head h2,
+.sidebar.is-collapsed .title small {
+  display: none;
+}
+
+.sidebar.is-collapsed .nav-section {
+  align-items: center;
+  padding: 8px 4px;
+}
+
+.sidebar.is-collapsed .nav-section__top {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.sidebar.is-collapsed .title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.nav-num { display: block; }
+
 .sidebar h2,
 .detail h2 {
   margin: 0 0 10px;
@@ -473,10 +520,10 @@ button.primary:hover { filter: brightness(1.06); }
 }
 
 .nav-section {
-  display: grid;
-  grid-template-columns: 18px 1fr;
-  gap: 6px 8px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
   text-align: left;
   padding: 10px 8px;
   border-radius: 12px;
@@ -487,8 +534,9 @@ button.primary:hover { filter: brightness(1.06); }
 .nav-section__top {
   width: 100%;
   display: grid;
-  grid-template-columns: 18px 1fr;
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 8px;
+  align-items: start;
   text-align: left;
   border: 0;
   background: transparent;
@@ -531,15 +579,44 @@ button.primary:hover { filter: brightness(1.06); }
   left: auto;
 }
 
+.section__tools {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.section__grow {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.section .chevron {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.section.is-current {
+  box-shadow: 0 0 0 2px rgb(14 92 99 / 16%);
+}
+
 .nav-section .section-go {
-  grid-column: 2;
-  justify-self: start;
+  align-self: start;
   font-size: 12px;
   padding: 4px 8px;
+  color: var(--muted);
 }
 
 .mini-bar {
-  grid-column: 2;
   height: 4px;
   background: #dde5df;
   border-radius: 99px;
@@ -556,7 +633,7 @@ button.primary:hover { filter: brightness(1.06); }
 
 .section {
   margin: 0 0 12px;
-  overflow: hidden;
+  overflow: visible;
   scroll-margin-top: 88px;
 }
 
@@ -835,7 +912,8 @@ kbd {
 }
 
 @media (max-width: 1099px) {
-  .workspace {
+  .workspace,
+  .workspace.is-sidebar-collapsed {
     grid-template-columns: 1fr;
   }
   .sidebar,
@@ -843,12 +921,48 @@ kbd {
     position: static;
     max-height: none;
   }
+  .detail { display: none; }
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 4px 10px;
+  }
+  .sidebar__head,
+  .howto { grid-column: 1 / -1; }
+  .sidebar-collapse { display: none; }
   .run-overview,
   .continue-card,
   .toolbar,
   .filter-chips,
   .workspace {
     width: calc(100% - 28px);
+  }
+}
+
+@media (max-width: 800px) {
+  .sections-open { display: inline-flex; }
+  .sidebar-close { display: inline-flex; }
+  .workspace { display: block; }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    z-index: 36;
+    transform: translateX(-110%);
+    transition: transform 160ms ease;
+    border-radius: 0;
+    overflow: auto;
+    padding-bottom: 24px;
+  }
+  .sidebar.is-drawer-open { transform: translateX(0); }
+  .sidebar-backdrop.is-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgb(23 32 51 / 40%);
+    z-index: 35;
   }
 }
 
