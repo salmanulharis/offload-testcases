@@ -1,0 +1,10 @@
+{
+  "name": "offload-testcases",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx wrangler pages dev public --kv=TEST_RESULTS --compatibility-date=2026-08-17",
+    "test": "node --test tests/schema.test.js",
+    "deploy": "npx wrangler pages deploy public --project-name=offload-testcases"
+  }
+}

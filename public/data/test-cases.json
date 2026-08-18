@@ -1,0 +1,1619 @@
+{
+  "version": 1,
+  "title": "Offload Media – Cloud Storage Pro v6.2.0",
+  "description": "Manual QA catalog (unit-test style). Mark Pass / Fail / Blocked / Skipped (use Skipped for N/A). If a Given precondition is missing, mark Blocked and say why. Fail severity: Blocker / Critical / Major / Minor. P0 first this release: Dashboard verification cards, Start Verification, Media Library statuses, delete-local safety, private downloads, WP-CLI, CSV reports. After opening Offload Media, use the plugin sidebar (not the WP left menu). Keep the browser console open (F12) and hard-refresh plugin admin pages with Ctrl+F5.",
+  "pluginVersion": "6.2.0",
+  "howToMark": [
+    "passed",
+    "failed",
+    "skipped",
+    "blocked"
+  ],
+  "pageMap": [
+    {
+      "screen": "Plugin home / Dashboard",
+      "path": "WP Admin → Offload Media",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard"
+    },
+    {
+      "screen": "Storage Provider",
+      "path": "Offload Media → sidebar Storage Provider",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider"
+    },
+    {
+      "screen": "General Settings",
+      "path": "Offload Media → sidebar General Settings",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings"
+    },
+    {
+      "screen": "Bulk Operations",
+      "path": "Offload Media → sidebar Bulk Operations",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations"
+    },
+    {
+      "screen": "File Manager",
+      "path": "Offload Media → sidebar File Manager",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager"
+    },
+    {
+      "screen": "Optimisation",
+      "path": "Offload Media → sidebar Optimisation",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#optimisation"
+    },
+    {
+      "screen": "Troubleshoot",
+      "path": "Offload Media → sidebar Troubleshoot",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#troubleshoot"
+    },
+    {
+      "screen": "License",
+      "path": "Offload Media → sidebar License (under Support)",
+      "url": "/wp-admin/admin.php?page=offload-media-settings#license"
+    },
+    {
+      "screen": "Media Library list",
+      "path": "WP Admin → Media → Library → List",
+      "url": "/wp-admin/upload.php?mode=list"
+    },
+    {
+      "screen": "Media Library grid",
+      "path": "WP Admin → Media → Library → Grid",
+      "url": "/wp-admin/upload.php?mode=grid"
+    }
+  ],
+  "sections": [
+    {
+      "id": "environment",
+      "title": "1. Smoke / environment",
+      "description": "Confirm staging/backup, plugin version, license, provider, and WP-CLI before P0 work.",
+      "subsections": [
+        {
+          "id": "smoke",
+          "title": "Environment checks",
+          "testCases": [
+            {
+              "id": "TC-ENV-01",
+              "title": "Staging or backup exists",
+              "priority": "P0",
+              "where": "Your host / WP admin (not inside the plugin)",
+              "url": "",
+              "given": "You are about to test delete-local / remove-from-cloud.",
+              "when": "Confirm this is staging or you have a DB + wp-content/uploads backup.",
+              "then": "You can restore if a test goes wrong. Do not run mass remove on production.",
+              "description": "Given: You are about to test delete-local / remove-from-cloud.\nWhen: Confirm this is staging or you have a DB + wp-content/uploads backup.",
+              "expectedResult": "You can restore if a test goes wrong. Do not run mass remove on production."
+            },
+            {
+              "id": "TC-ENV-02",
+              "title": "Plugin shows 6.2.0",
+              "priority": "P0",
+              "where": "WP Admin → Plugins → Installed Plugins",
+              "url": "/wp-admin/plugins.php",
+              "given": "",
+              "when": "Find Offload Media - Cloud Storage Pro.",
+              "then": "Version is 6.2.0. Plugin is Active.",
+              "description": "When: Find Offload Media - Cloud Storage Pro.",
+              "expectedResult": "Version is 6.2.0. Plugin is Active."
+            },
+            {
+              "id": "TC-ENV-03",
+              "title": "License lets you into Main screens",
+              "priority": "P0",
+              "where": "Offload Media → License",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#license",
+              "given": "",
+              "when": "Open Dashboard.",
+              "then": "You see Dashboard / Storage Provider / Bulk Operations. If you only see License, activate a valid license first (Blocked).",
+              "description": "When: Open Dashboard.",
+              "expectedResult": "You see Dashboard / Storage Provider / Bulk Operations. If you only see License, activate a valid license first (Blocked)."
+            },
+            {
+              "id": "TC-ENV-04",
+              "title": "Provider connected, test bucket selected",
+              "priority": "P0",
+              "where": "Offload Media → Storage Provider",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "",
+              "when": "Confirm provider, credentials saved, connection verified, bucket selected.",
+              "then": "Header shows connected provider + bucket. Dashboard later says Connected to {provider}.",
+              "description": "When: Confirm provider, credentials saved, connection verified, bucket selected.",
+              "expectedResult": "Header shows connected provider + bucket. Dashboard later says Connected to {provider}."
+            },
+            {
+              "id": "TC-ENV-05",
+              "title": "WP-CLI status (if CLI exists)",
+              "priority": "P0",
+              "where": "SSH / local terminal in the WordPress root",
+              "url": "",
+              "given": "WP-CLI is available, or mark Skipped / N/A.",
+              "when": "Run `wp acoofmp status`.",
+              "then": "Prints Provider/bucket and counts (Total, Eligible, Offloaded, Verified, Awaiting Verification, Not Offloaded, Failed, Retrying, Local Removed). No PHP fatal.",
+              "description": "Given: WP-CLI is available, or mark Skipped / N/A.\nWhen: Run `wp acoofmp status`.",
+              "expectedResult": "Prints Provider/bucket and counts (Total, Eligible, Offloaded, Verified, Awaiting Verification, Not Offloaded, Failed, Retrying, Local Removed). No PHP fatal."
+            },
+            {
+              "id": "TC-ENV-06",
+              "title": "No Identifier 'wp' has already been declared",
+              "priority": "P0",
+              "where": "Any plugin admin page + Media Library, console open",
+              "url": "",
+              "given": "",
+              "when": "Hard-refresh (Ctrl+F5), click Dashboard, Bulk Operations, Media Library.",
+              "then": "Console has no error Identifier 'wp' has already been declared.",
+              "description": "When: Hard-refresh (Ctrl+F5), click Dashboard, Bulk Operations, Media Library.",
+              "expectedResult": "Console has no error Identifier 'wp' has already been declared."
+            }
+          ]
+        },
+        {
+          "id": "fixtures",
+          "title": "0b. Test data setup (do this once)",
+          "description": "Create named files and keep attachment IDs. Later cases refer to these aliases.",
+          "testCases": [
+            {
+              "id": "SETUP-NEW-IMG",
+              "title": "Create NEW-IMG",
+              "priority": "P0",
+              "where": "Media → Add New",
+              "url": "/wp-admin/media-new.php",
+              "given": "Copy new files to bucket is ON.",
+              "when": "Upload a small JPG.",
+              "then": "Lifecycle is Offloaded (not yet Verified). Note the attachment ID.",
+              "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a small JPG.",
+              "expectedResult": "Lifecycle is Offloaded (not yet Verified). Note the attachment ID."
+            },
+            {
+              "id": "SETUP-NEW-PDF",
+              "title": "Create NEW-PDF",
+              "priority": "P0",
+              "where": "Media → Add New",
+              "url": "/wp-admin/media-new.php",
+              "given": "Copy new files to bucket is ON.",
+              "when": "Upload a PDF the same way.",
+              "then": "Lifecycle is Offloaded. Note the attachment ID.",
+              "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a PDF the same way.",
+              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-NEW-LARGE",
+              "title": "Create NEW-LARGE",
+              "priority": "P0",
+              "where": "Media → Add New",
+              "url": "/wp-admin/media-new.php",
+              "given": "Copy new files to bucket is ON.",
+              "when": "Upload a larger file (~5–20 MB).",
+              "then": "Lifecycle is Offloaded. Note the attachment ID.",
+              "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a larger file (~5–20 MB).",
+              "expectedResult": "Lifecycle is Offloaded. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-LOCAL-ONLY",
+              "title": "Create LOCAL-ONLY",
+              "priority": "P0",
+              "where": "Media → Add New",
+              "url": "/wp-admin/media-new.php",
+              "given": "Copy-to-bucket is OFF, or the file is never synced.",
+              "when": "Upload a file that stays local only.",
+              "then": "Lifecycle is Not offloaded. Note the attachment ID.",
+              "description": "Given: Copy-to-bucket is OFF, or the file is never synced.\nWhen: Upload a file that stays local only.",
+              "expectedResult": "Lifecycle is Not offloaded. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-LEGACY",
+              "title": "Identify LEGACY file",
+              "priority": "P0",
+              "where": "Media → Library",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "A file that was already offloaded before this 6.2.0 update.",
+              "when": "Find that file and note its ID.",
+              "then": "Lifecycle is Offloaded. Keep it for TC-ML-10.",
+              "description": "Given: A file that was already offloaded before this 6.2.0 update.\nWhen: Find that file and note its ID.",
+              "expectedResult": "Lifecycle is Offloaded. Keep it for TC-ML-10."
+            },
+            {
+              "id": "SETUP-TO-FAIL",
+              "title": "Create TO-FAIL",
+              "priority": "P0",
+              "where": "File Manager or bucket console",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "A file is offloaded in WordPress.",
+              "when": "Delete that object in File Manager / bucket console.",
+              "then": "WP still shows Offloaded until you verify — then it should become Failed.",
+              "description": "Given: A file is offloaded in WordPress.\nWhen: Delete that object in File Manager / bucket console.",
+              "expectedResult": "WP still shows Offloaded until you verify — then it should become Failed."
+            },
+            {
+              "id": "SETUP-TO-VERIFY",
+              "title": "Identify TO-VERIFY",
+              "priority": "P0",
+              "where": "Media → Library",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "Any offloaded file you have not verified yet.",
+              "when": "Note the attachment ID.",
+              "then": "Lifecycle is Offloaded / Awaiting verification.",
+              "description": "Given: Any offloaded file you have not verified yet.\nWhen: Note the attachment ID.",
+              "expectedResult": "Lifecycle is Offloaded / Awaiting verification."
+            },
+            {
+              "id": "SETUP-VERIFIED-1",
+              "title": "Create VERIFIED-1",
+              "priority": "P0",
+              "where": "Bulk Operations → Start Verification",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "An offloaded unverified file exists.",
+              "when": "Offload if needed, then run Start Verification and wait.",
+              "then": "Lifecycle is Verified. Note the attachment ID.",
+              "description": "Given: An offloaded unverified file exists.\nWhen: Offload if needed, then run Start Verification and wait.",
+              "expectedResult": "Lifecycle is Verified. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-LOCAL-GONE",
+              "title": "Create LOCAL-GONE",
+              "priority": "P0",
+              "where": "Media details → Delete from Server",
+              "url": "",
+              "given": "File is Verified. Require Verification Before Delete Local is ON.",
+              "when": "Verify, then Delete from Server.",
+              "then": "Lifecycle is Local Deleted. Note the attachment ID.",
+              "description": "Given: File is Verified. Require Verification Before Delete Local is ON.\nWhen: Verify, then Delete from Server.",
+              "expectedResult": "Lifecycle is Local Deleted. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-PRIVATE-DL",
+              "title": "Create PRIVATE-DL",
+              "priority": "P0",
+              "where": "Media details → Cloud Access",
+              "url": "",
+              "given": "Woo/EDD downloadable file (ZIP/PDF) is offloaded, or mark later cases N/A.",
+              "when": "Set Cloud Access = Private.",
+              "then": "Lifecycle is Offloaded + Private. Note the attachment ID.",
+              "description": "Given: Woo/EDD downloadable file (ZIP/PDF) is offloaded, or mark later cases N/A.\nWhen: Set Cloud Access = Private.",
+              "expectedResult": "Lifecycle is Offloaded + Private. Note the attachment ID."
+            },
+            {
+              "id": "SETUP-WEBP",
+              "title": "Optional WEBP fixture",
+              "priority": "P1",
+              "where": "Media → Add New",
+              "url": "/wp-admin/media-new.php",
+              "given": "Optional image you will convert/offload as WebP.",
+              "when": "Upload or convert an image as WebP if that path is in scope.",
+              "then": "Fixture exists, or mark Skipped / N/A.",
+              "description": "Given: Optional image you will convert/offload as WebP.\nWhen: Upload or convert an image as WebP if that path is in scope.",
+              "expectedResult": "Fixture exists, or mark Skipped / N/A."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dashboard",
+      "title": "2. Dashboard — verification cards & reports",
+      "description": "P0. Plugin home: WP Admin → Offload Media → #dashboard.",
+      "subsections": [
+        {
+          "id": "dashboard-cards",
+          "title": "Cards, banners, CSV exports",
+          "testCases": [
+            {
+              "id": "TC-DASH-01",
+              "title": "Dashboard loads",
+              "priority": "P0",
+              "where": "WP Admin → Offload Media (opens Dashboard)",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "License valid, provider configured.",
+              "when": "Open the page with console open.",
+              "then": "Title Dashboard. No console errors. You see connection health plus media cards.",
+              "description": "Given: License valid, provider configured.\nWhen: Open the page with console open.",
+              "expectedResult": "Title Dashboard. No console errors. You see connection health plus media cards."
+            },
+            {
+              "id": "TC-DASH-02",
+              "title": "Media summary cards show the right labels",
+              "priority": "P0",
+              "where": "Dashboard → section Media summary",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "",
+              "when": "Look at the eight cards.",
+              "then": "You see exactly: 1. Library media — In WordPress Media Library; 2. Eligible to offload; 3. Offloaded — % of eligible; 4. Not offloaded — Remaining eligible to sync; 5. Local removed — Removed from server; 6. Verified — Cloud existence confirmed; 7. Awaiting verification — Offloaded, not yet verified; 8. Failed — Lifecycle / verify errors (or N retrying). Numbers feel roughly right vs Media Library (small lag is OK).",
+              "description": "When: Look at the eight cards.",
+              "expectedResult": "You see exactly: 1. Library media — In WordPress Media Library; 2. Eligible to offload; 3. Offloaded — % of eligible; 4. Not offloaded — Remaining eligible to sync; 5. Local removed — Removed from server; 6. Verified — Cloud existence confirmed; 7. Awaiting verification — Offloaded, not yet verified; 8. Failed — Lifecycle / verify errors (or N retrying). Numbers feel roughly right vs Media Library (small lag is OK)."
+            },
+            {
+              "id": "TC-DASH-03",
+              "title": "Awaiting-verification warning + Verify Offloads",
+              "priority": "P0",
+              "where": "Dashboard (top attention banner)",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "Some files are Offloaded but not Verified (Awaiting verification > 0).",
+              "when": "Read the banner. Click Verify Offloads.",
+              "then": "Banner text is like: “N offloaded file(s) are awaiting cloud verification before local files can be safely removed.” Clicking Verify Offloads takes you to Bulk Operations (#bulk-operations), not a dead end. You can see Start Verification on that page.",
+              "description": "Given: Some files are Offloaded but not Verified (Awaiting verification > 0).\nWhen: Read the banner. Click Verify Offloads.",
+              "expectedResult": "Banner text is like: “N offloaded file(s) are awaiting cloud verification before local files can be safely removed.” Clicking Verify Offloads takes you to Bulk Operations (#bulk-operations), not a dead end. You can see Start Verification on that page."
+            },
+            {
+              "id": "TC-DASH-04",
+              "title": "Storage not configured",
+              "priority": "P1",
+              "where": "Dashboard",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "You can temporarily disconnect / use a site without provider (or a staging clone). Skip if you cannot safely disconnect.",
+              "when": "Open Dashboard with storage not configured.",
+              "then": "Banner: “Cloud storage is not configured yet…” Button Connect Provider goes to Storage Provider.",
+              "description": "Given: You can temporarily disconnect / use a site without provider (or a staging clone). Skip if you cannot safely disconnect.\nWhen: Open Dashboard with storage not configured.",
+              "expectedResult": "Banner: “Cloud storage is not configured yet…” Button Connect Provider goes to Storage Provider."
+            },
+            {
+              "id": "TC-DASH-05",
+              "title": "Pending offload CTA",
+              "priority": "P1",
+              "where": "Dashboard",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "Not offloaded > 0 and no job running.",
+              "when": "Look at the attention banner / Bulk Operations block.",
+              "then": "Message about files not yet offloaded. Button Open Bulk Operations (or similar) goes to #bulk-operations.",
+              "description": "Given: Not offloaded > 0 and no job running.\nWhen: Look at the attention banner / Bulk Operations block.",
+              "expectedResult": "Message about files not yet offloaded. Button Open Bulk Operations (or similar) goes to #bulk-operations."
+            },
+            {
+              "id": "TC-DASH-06",
+              "title": "Export failed CSV from Dashboard",
+              "priority": "P0",
+              "where": "Dashboard → Media reports",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "",
+              "when": "Click Export failed CSV.",
+              "then": "Browser downloads acoofmp-failed-media.csv. File opens in Excel/Sheets. Columns include: attachment_id, title, state, last_error, verified_at.",
+              "description": "When: Click Export failed CSV.",
+              "expectedResult": "Browser downloads acoofmp-failed-media.csv. File opens in Excel/Sheets. Columns include: attachment_id, title, state, last_error, verified_at."
+            },
+            {
+              "id": "TC-DASH-07",
+              "title": "Export verification CSV from Dashboard",
+              "priority": "P0",
+              "where": "Dashboard → Media reports",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "",
+              "when": "Click Export verification CSV.",
+              "then": "Downloads acoofmp-verification-report.csv. Columns include: attachment_id, title, state, verification_status, verified_at, size_ok, etag_ok, url_ok, reason, code, object_key, provider, http_status, safe_to_remove_local.",
+              "description": "When: Click Export verification CSV.",
+              "expectedResult": "Downloads acoofmp-verification-report.csv. Columns include: attachment_id, title, state, verification_status, verified_at, size_ok, etag_ok, url_ok, reason, code, object_key, provider, http_status, safe_to_remove_local."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "title": "3. Bulk Operations — Start Verification",
+      "description": "P0. Durable Job Engine at the top of Bulk Operations. Related automated script: tests/cloud-verification.php.",
+      "subsections": [
+        {
+          "id": "durable-verify",
+          "title": "Durable Job Engine",
+          "testCases": [
+            {
+              "id": "TC-VER-01",
+              "title": "Start Verification creates a job",
+              "priority": "P0",
+              "where": "Offload Media → Bulk Operations → card Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "At least one offloaded, unverified file. No Remove-from-cloud job running.",
+              "when": "Click Start Verification.",
+              "then": "Toast/notice: verification job started (or already running). A job row appears with Operation Verify offloads. Status moves waiting/pending → processing. Live line Verifying cloud objects can appear above the buttons. Progress shows like N / M verified (x%) — numbers move during the run, not only at the end.",
+              "description": "Given: At least one offloaded, unverified file. No Remove-from-cloud job running.\nWhen: Click Start Verification.",
+              "expectedResult": "Toast/notice: verification job started (or already running). A job row appears with Operation Verify offloads. Status moves waiting/pending → processing. Live line Verifying cloud objects can appear above the buttons. Progress shows like N / M verified (x%) — numbers move during the run, not only at the end."
+            },
+            {
+              "id": "TC-VER-02",
+              "title": "Verification survives leaving the page",
+              "priority": "P0",
+              "where": "Bulk Operations → Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A verification job can be started.",
+              "when": "Start Verification, then close the tab or go to Posts. Wait ~30–60s. Reopen Bulk Operations.",
+              "then": "Job is still processing or completed. It did not die with the browser.",
+              "description": "Given: A verification job can be started.\nWhen: Start Verification, then close the tab or go to Posts. Wait ~30–60s. Reopen Bulk Operations.",
+              "expectedResult": "Job is still processing or completed. It did not die with the browser."
+            },
+            {
+              "id": "TC-VER-03",
+              "title": "Pause / Resume / Cancel on verification",
+              "priority": "P0",
+              "where": "Job table → Actions column",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A verification job with enough files that it does not finish instantly (use a larger library or pause quickly).",
+              "when": "1. Click Pause → status paused, progress bar stops chewing new files (in-flight items may finish). 2. Click Resume → continues from remaining items. 3. On another run (or remaining items): click Cancel → remaining pending items cancelled; cancelled items are not verified afterward.",
+              "then": "Each control matches the status in the table. Cancelled files stay Offloaded (not Verified) unless they already succeeded.",
+              "description": "Given: A verification job with enough files that it does not finish instantly (use a larger library or pause quickly).\nWhen: 1. Click Pause → status paused, progress bar stops chewing new files (in-flight items may finish). 2. Click Resume → continues from remaining items. 3. On another run (or remaining items): click Cancel → remaining pending items cancelled; cancelled items are not verified afterward.",
+              "expectedResult": "Each control matches the status in the table. Cancelled files stay Offloaded (not Verified) unless they already succeeded."
+            },
+            {
+              "id": "TC-VER-04",
+              "title": "Success updates Media Library + Dashboard",
+              "priority": "P0",
+              "where": "After a successful verify → Media → Library (list) and Dashboard",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "A file was verified (VERIFIED-1).",
+              "when": "Open a file that was verified. Refresh Dashboard.",
+              "then": "Lifecycle = Verified. Dashboard Verified count went up. Awaiting verification went down. If awaiting is now 0, the Dashboard warning improves or clears.",
+              "description": "Given: A file was verified (VERIFIED-1).\nWhen: Open a file that was verified. Refresh Dashboard.",
+              "expectedResult": "Lifecycle = Verified. Dashboard Verified count went up. Awaiting verification went down. If awaiting is now 0, the Dashboard warning improves or clears."
+            },
+            {
+              "id": "TC-VER-05",
+              "title": "Real verification failure is visible",
+              "priority": "P0",
+              "where": "File Manager or bucket console, then Bulk Operations → Start Verification",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "File TO-FAIL is offloaded in WP, but you deleted the cloud object (or replaced it with a different-size file).",
+              "when": "Run Start Verification. When done, open Media Library details for that file. Optionally View failures on the job.",
+              "then": "Lifecycle = Failed. You can see a plain-language reason (missing object, size mismatch, URL check, etc.). Dashboard Failed > 0. Verification CSV reason / code matches that file. Site still loads other media; one failed verify does not take the site down.",
+              "description": "Given: File TO-FAIL is offloaded in WP, but you deleted the cloud object (or replaced it with a different-size file).\nWhen: Run Start Verification. When done, open Media Library details for that file. Optionally View failures on the job.",
+              "expectedResult": "Lifecycle = Failed. You can see a plain-language reason (missing object, size mismatch, URL check, etc.). Dashboard Failed > 0. Verification CSV reason / code matches that file. Site still loads other media; one failed verify does not take the site down."
+            },
+            {
+              "id": "TC-VER-06",
+              "title": "Verify is blocked while Remove is running",
+              "priority": "P1",
+              "where": "Bulk Operations → Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A Start Durable Remove job is processing or paused.",
+              "when": "Look at Start Verification.",
+              "then": "Button is disabled / reads Blocked by Remove job. Tooltip explains wait. No second conflicting job is created.",
+              "description": "Given: A Start Durable Remove job is processing or paused.\nWhen: Look at Start Verification.",
+              "expectedResult": "Button is disabled / reads Blocked by Remove job. Tooltip explains wait. No second conflicting job is created."
+            },
+            {
+              "id": "TC-VER-07",
+              "title": "Double-click does not start two verify jobs",
+              "priority": "P1",
+              "where": "Start Verification",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "",
+              "when": "Click the button twice quickly.",
+              "then": "One job only. Second click says verification is already running (or already active but paused — resume from the job list).",
+              "description": "When: Click the button twice quickly.",
+              "expectedResult": "One job only. Second click says verification is already running (or already active but paused — resume from the job list)."
+            },
+            {
+              "id": "TC-VER-08",
+              "title": "Remove is blocked while Verify is running",
+              "priority": "P1",
+              "where": "Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "Verification job active.",
+              "when": "Look at Start Durable Remove.",
+              "then": "Disabled / Blocked by Verify job. Confirm dialog for remove is not the path to a second job.",
+              "description": "Given: Verification job active.\nWhen: Look at Start Durable Remove.",
+              "expectedResult": "Disabled / Blocked by Verify job. Confirm dialog for remove is not the path to a second job."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media-library",
+      "title": "9. Media Library — status, filters, public/private",
+      "description": "P0. List: /wp-admin/upload.php?mode=list. Grid: ?mode=grid. List column Offload Status; grid badge Offloaded; details field Lifecycle.",
+      "subsections": [
+        {
+          "id": "library-status",
+          "title": "Status, filters, access",
+          "testCases": [
+            {
+              "id": "TC-ML-01",
+              "title": "List view Offload Status column",
+              "priority": "P0",
+              "where": "WP Admin → Media → Library → click List (top-right of Media)",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "",
+              "when": "Scan the Offload Status column.",
+              "then": "You see lifecycle labels, including: Not offloaded, Offloaded, Verified, Failed, Local deleted (as applicable). No PHP notices on the page.",
+              "description": "When: Scan the Offload Status column.",
+              "expectedResult": "You see lifecycle labels, including: Not offloaded, Offloaded, Verified, Failed, Local deleted (as applicable). No PHP notices on the page."
+            },
+            {
+              "id": "TC-ML-02",
+              "title": "Grid view badge",
+              "priority": "P0",
+              "where": "Media → Library → Grid",
+              "url": "/wp-admin/upload.php?mode=grid",
+              "given": "Files in Offloaded / Verified / Local Deleted.",
+              "when": "Hover the small badge on the thumbnail.",
+              "then": "Badge short text is Offloaded. Tooltip shows the specific state (Offloaded / Verified / Local Deleted). Badge does not appear on purely local (not offloaded) files.",
+              "description": "Given: Files in Offloaded / Verified / Local Deleted.\nWhen: Hover the small badge on the thumbnail.",
+              "expectedResult": "Badge short text is Offloaded. Tooltip shows the specific state (Offloaded / Verified / Local Deleted). Badge does not appear on purely local (not offloaded) files."
+            },
+            {
+              "id": "TC-ML-03",
+              "title": "Details show the same lifecycle",
+              "priority": "P0",
+              "where": "List: click file title. Grid: click thumbnail.",
+              "url": "",
+              "given": "",
+              "when": "Find field Lifecycle.",
+              "then": "Same state as the list/grid (Not offloaded / Offloaded / Verified / Failed / Local deleted). Offload Status legacy line still makes sense (Offloaded to Cloud / Stored on Server / Deleted from Server).",
+              "description": "When: Find field Lifecycle.",
+              "expectedResult": "Same state as the list/grid (Not offloaded / Offloaded / Verified / Failed / Local deleted). Offload Status legacy line still makes sense (Offloaded to Cloud / Stored on Server / Deleted from Server)."
+            },
+            {
+              "id": "TC-ML-04",
+              "title": "After sync → Offloaded",
+              "priority": "P0",
+              "where": "Media details of LOCAL-ONLY or Bulk Operations Start Durable Sync",
+              "url": "",
+              "given": "LOCAL-ONLY exists or a file can be synced.",
+              "when": "Sync that file to cloud. Refresh Media Library.",
+              "then": "Lifecycle = Offloaded. Offload Actions show Remove from Cloud and Delete from Server. File loads on the front of the site from cloud/CDN.",
+              "description": "Given: LOCAL-ONLY exists or a file can be synced.\nWhen: Sync that file to cloud. Refresh Media Library.",
+              "expectedResult": "Lifecycle = Offloaded. Offload Actions show Remove from Cloud and Delete from Server. File loads on the front of the site from cloud/CDN."
+            },
+            {
+              "id": "TC-ML-05",
+              "title": "After verify → Verified",
+              "priority": "P0",
+              "where": "Media details of VERIFIED-1",
+              "url": "",
+              "given": "After TC-VER-04.",
+              "when": "Confirm after TC-VER-04.",
+              "then": "Lifecycle = Verified. Filter Verified includes this file.",
+              "description": "Given: After TC-VER-04.\nWhen: Confirm after TC-VER-04.",
+              "expectedResult": "Lifecycle = Verified. Filter Verified includes this file."
+            },
+            {
+              "id": "TC-ML-06",
+              "title": "After delete local → Local Deleted",
+              "priority": "P0",
+              "where": "Media details of a Verified file → Delete from Server",
+              "url": "",
+              "given": "Safety setting ON (see TC-DEL-*).",
+              "when": "Click Delete from Server. Confirm. Refresh.",
+              "then": "Lifecycle = Local deleted (or Local Deleted). Offload Status also says Deleted from Server. Front of site still shows the image from the cloud. Local file is gone from wp-content/uploads.",
+              "description": "Given: Safety setting ON (see TC-DEL-*).\nWhen: Click Delete from Server. Confirm. Refresh.",
+              "expectedResult": "Lifecycle = Local deleted (or Local Deleted). Offload Status also says Deleted from Server. Front of site still shows the image from the cloud. Local file is gone from wp-content/uploads."
+            },
+            {
+              "id": "TC-ML-07",
+              "title": "After remove from cloud → Not offloaded",
+              "priority": "P0",
+              "where": "Media details → Remove from Cloud (use a disposable test file; download local first if local was deleted)",
+              "url": "",
+              "given": "A disposable offloaded test file exists.",
+              "when": "Remove from cloud. Refresh.",
+              "then": "Lifecycle = Not offloaded. Filter Not Offloaded includes it. Front of site uses local file if present.",
+              "description": "Given: A disposable offloaded test file exists.\nWhen: Remove from cloud. Refresh.",
+              "expectedResult": "Lifecycle = Not offloaded. Filter Not Offloaded includes it. Front of site uses local file if present."
+            },
+            {
+              "id": "TC-ML-08",
+              "title": "List filter dropdown",
+              "priority": "P0",
+              "where": "Media → Library → List → dropdown All cloud statuses (next to other date/type filters)",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "",
+              "when": "Choose each value and click Filter. Spot-check 3 files per view.",
+              "then": "All cloud statuses = mixed. Offloaded = Offloaded (typically not not-offloaded). Not Offloaded = Not offloaded. Failed = Failed. Verified = Verified. Local Deleted = Local deleted. Wrong files in a filter = Fail.",
+              "description": "When: Choose each value and click Filter. Spot-check 3 files per view.",
+              "expectedResult": "All cloud statuses = mixed. Offloaded = Offloaded (typically not not-offloaded). Not Offloaded = Not offloaded. Failed = Failed. Verified = Verified. Local Deleted = Local deleted. Wrong files in a filter = Fail."
+            },
+            {
+              "id": "TC-ML-09",
+              "title": "Grid filter without a full WP page reload only",
+              "priority": "P0",
+              "where": "Media → Library → Grid → dropdown #acoofmp-media-filter-grid",
+              "url": "/wp-admin/upload.php?mode=grid",
+              "given": "",
+              "when": "Change filter. Watch the grid refresh via AJAX.",
+              "then": "Grid updates to the right set. You should not need to fully reload upload.php for the filter to apply. Spot-check matches list-view filter.",
+              "description": "When: Change filter. Watch the grid refresh via AJAX.",
+              "expectedResult": "Grid updates to the right set. You should not need to fully reload upload.php for the filter to apply. Spot-check matches list-view filter."
+            },
+            {
+              "id": "TC-ML-10",
+              "title": "Legacy offloaded files still count as Offloaded",
+              "priority": "P0",
+              "where": "Media Library filter Offloaded",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "File LEGACY offloaded before 6.2.0.",
+              "when": "Find LEGACY.",
+              "then": "It appears under Offloaded (not missing / not Not offloaded). Front-end URL still works.",
+              "description": "Given: File LEGACY offloaded before 6.2.0.\nWhen: Find LEGACY.",
+              "expectedResult": "It appears under Offloaded (not missing / not Not offloaded). Front-end URL still works."
+            },
+            {
+              "id": "TC-ML-11",
+              "title": "Cloud Access Public / Private saves",
+              "priority": "P0",
+              "where": "Attachment details → Cloud Access",
+              "url": "",
+              "given": "File is offloaded. Provider supports object-level ACL (S3 / Spaces / Wasabi / MinIO typically yes; R2 no; GCS with UBLA no — mark N/A and confirm UI says unsupported).",
+              "when": "1. Set Private. Update/Save. Close details. Reopen. 2. Set Public. Save. Reopen.",
+              "then": "The dropdown keeps the last saved value. Help text: “Private media is delivered with short-lived signed URLs.”",
+              "description": "Given: File is offloaded. Provider supports object-level ACL (S3 / Spaces / Wasabi / MinIO typically yes; R2 no; GCS with UBLA no — mark N/A and confirm UI says unsupported).\nWhen: 1. Set Private. Update/Save. Close details. Reopen. 2. Set Public. Save. Reopen.",
+              "expectedResult": "The dropdown keeps the last saved value. Help text: “Private media is delivered with short-lived signed URLs.”"
+            },
+            {
+              "id": "TC-ML-12",
+              "title": "Private media on the front uses a temporary link",
+              "priority": "P0",
+              "where": "Front of the site (a page/post that uses the private image) or attachment URL",
+              "url": "",
+              "given": "Cloud Access = Private. Presigned/signed delivery available.",
+              "when": "View the page logged-out. Inspect the image/file URL.",
+              "then": "It is not a long-lived public CDN/bucket URL that anyone can guess forever. It is a signed/temporary URL (or WP-mediated). File still displays for legitimate page views. Direct bucket URL without signature should not stay open.",
+              "description": "Given: Cloud Access = Private. Presigned/signed delivery available.\nWhen: View the page logged-out. Inspect the image/file URL.",
+              "expectedResult": "It is not a long-lived public CDN/bucket URL that anyone can guess forever. It is a signed/temporary URL (or WP-mediated). File still displays for legitimate page views. Direct bucket URL without signature should not stay open."
+            },
+            {
+              "id": "TC-ML-13",
+              "title": "Media Library bulk actions still work",
+              "priority": "P1",
+              "where": "List: checkbox + Bulk actions dropdown. Grid: select files + bulk cloud actions.",
+              "url": "/wp-admin/upload.php?mode=list",
+              "given": "",
+              "when": "On 1–3 test files, run Sync to Cloud (list) / Offload to Cloud (grid), then later Remove from Cloud on a disposable file.",
+              "then": "Action completes, status updates, no fatal error. List labels: Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server.",
+              "description": "When: On 1–3 test files, run Sync to Cloud (list) / Offload to Cloud (grid), then later Remove from Cloud on a disposable file.",
+              "expectedResult": "Action completes, status updates, no fatal error. List labels: Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "delete-local",
+      "title": "10. Delete from Server — verification safety",
+      "description": "Setting: Offload Media → General Settings → Jobs & Performance → Require Verification Before Delete Local. Leave ON for TC-DEL-01 through TC-DEL-04. Related: tests/storage-saver-flow.php, tests/storage-saver-eligibility.php.",
+      "subsections": [
+        {
+          "id": "delete-safety",
+          "title": "Require Verification Before Delete Local",
+          "testCases": [
+            {
+              "id": "TC-DEL-01",
+              "title": "Unverified offloaded file cannot delete local",
+              "priority": "P0",
+              "where": "Media details of TO-VERIFY (Offloaded, not Verified) → Delete from Server. Also test Media list bulk Delete from Server on the same kind of file.",
+              "url": "",
+              "given": "Safety ON. File is in the cloud but Lifecycle is Offloaded (not Verified).",
+              "when": "Attempt Delete from Server.",
+              "then": "Delete is blocked or skipped. Local file still exists on disk. Message is understandable (needs verification / cloud copy not confirmed). Dashboard Local removed does not jump up for this file.",
+              "description": "Given: Safety ON. File is in the cloud but Lifecycle is Offloaded (not Verified).\nWhen: Attempt Delete from Server.",
+              "expectedResult": "Delete is blocked or skipped. Local file still exists on disk. Message is understandable (needs verification / cloud copy not confirmed). Dashboard Local removed does not jump up for this file."
+            },
+            {
+              "id": "TC-DEL-02",
+              "title": "After verify, Delete from Server works",
+              "priority": "P0",
+              "where": "Verify the same file (Start Verification or wait for TC-VER-04) → Delete from Server",
+              "url": "",
+              "given": "Lifecycle = Verified. Safety ON.",
+              "when": "Delete from Server.",
+              "then": "Success. Local file gone. Front still shows media from cloud. Lifecycle = Local deleted.",
+              "description": "Given: Lifecycle = Verified. Safety ON.\nWhen: Delete from Server.",
+              "expectedResult": "Success. Local file gone. Front still shows media from cloud. Lifecycle = Local deleted."
+            },
+            {
+              "id": "TC-DEL-03",
+              "title": "Download to Server restores local file",
+              "priority": "P0",
+              "where": "Details of LOCAL-GONE → Download to Server",
+              "url": "",
+              "given": "LOCAL-GONE exists (local already deleted).",
+              "when": "Click Download to Server. Check wp-content/uploads (or hosting file manager).",
+              "then": "Local file is back. Lifecycle returns to Verified (or Offloaded if verify meta is not verified). Site still works.",
+              "description": "Given: LOCAL-GONE exists (local already deleted).\nWhen: Click Download to Server. Check wp-content/uploads (or hosting file manager).",
+              "expectedResult": "Local file is back. Lifecycle returns to Verified (or Offloaded if verify meta is not verified). Site still works."
+            },
+            {
+              "id": "TC-DEL-04",
+              "title": "Already-deleted local does not error-loop",
+              "priority": "P1",
+              "where": "Details of a Local Deleted file → Delete from Server again",
+              "url": "",
+              "given": "File is already Local Deleted.",
+              "when": "Try delete local a second time.",
+              "then": "Treated as already removed / skipped. No fatal, no endless retry spinner.",
+              "description": "Given: File is already Local Deleted.\nWhen: Try delete local a second time.",
+              "expectedResult": "Treated as already removed / skipped. No fatal, no endless retry spinner."
+            },
+            {
+              "id": "TC-DEL-05",
+              "title": "Safety OFF allows delete without verify (brief)",
+              "priority": "P1",
+              "where": "General Settings → Jobs & Performance → turn Require Verification Before Delete Local OFF → Save",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "A disposable Offloaded-but-not-Verified file exists. Risky — staging only.",
+              "when": "On a disposable Offloaded-but-not-Verified file, Delete from Server.",
+              "then": "Local delete is allowed. Immediately turn the setting back ON and Save. Note the risk in the log.",
+              "description": "Given: A disposable Offloaded-but-not-Verified file exists. Risky — staging only.\nWhen: On a disposable Offloaded-but-not-Verified file, Delete from Server.",
+              "expectedResult": "Local delete is allowed. Immediately turn the setting back ON and Save. Note the risk in the log."
+            },
+            {
+              "id": "TC-DEL-06",
+              "title": "Safety ON again",
+              "priority": "P0",
+              "where": "Same setting → ON → Save",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "After TC-DEL-05.",
+              "when": "Repeat TC-DEL-01 on another unverified file.",
+              "then": "Protection has returned (blocked/skipped).",
+              "description": "Given: After TC-DEL-05.\nWhen: Repeat TC-DEL-01 on another unverified file.",
+              "expectedResult": "Protection has returned (blocked/skipped)."
+            },
+            {
+              "id": "TC-DEL-07",
+              "title": "Durable Remove local files job respects safety",
+              "priority": "P1",
+              "where": "Bulk Operations older Delete from Server / Storage Saver card or job Remove local files",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "Mix of verified and unverified offloaded files. Safety ON.",
+              "when": "Run remove-local on the library (prefer a small staging set).",
+              "then": "Unverified files are skipped/failed with a clear reason. Verified files can be deleted locally. No mass wipe of unverified media.",
+              "description": "Given: Mix of verified and unverified offloaded files. Safety ON.\nWhen: Run remove-local on the library (prefer a small staging set).",
+              "expectedResult": "Unverified files are skipped/failed with a clear reason. Verified files can be deleted locally. No mass wipe of unverified media."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "private-downloads",
+      "title": "11. Private downloads (Woo / EDD)",
+      "description": "Skip a subsection if the plugin is not installed. Mark Skipped / N/A.",
+      "subsections": [
+        {
+          "id": "woocommerce",
+          "title": "WooCommerce",
+          "testCases": [
+            {
+              "id": "TC-WOO-01",
+              "title": "Product images still load from cloud",
+              "priority": "P1",
+              "where": "Front: a product page. Admin: Products → Edit",
+              "url": "",
+              "given": "WooCommerce is installed. Product image is offloaded. Mark Skipped if Woo is out of scope.",
+              "when": "View product logged-out.",
+              "then": "Image loads (cloud/CDN). No broken image.",
+              "description": "Given: WooCommerce is installed. Product image is offloaded. Mark Skipped if Woo is out of scope.\nWhen: View product logged-out.",
+              "expectedResult": "Image loads (cloud/CDN). No broken image."
+            },
+            {
+              "id": "TC-WOO-02",
+              "title": "Buyer can download a private offloaded file",
+              "priority": "P0",
+              "where": "Media → Library → set PRIVATE-DL Cloud Access = Private; Products → Edit → Downloadable product; My Account → Downloads",
+              "url": "",
+              "given": "Woo downloadable products are in scope. PRIVATE-DL exists. Mark Skipped if Woo downloads are out of scope.",
+              "when": "1. Set PRIVATE-DL Cloud Access = Private. 2. Point a downloadable product file URL at that media. 3. Place a test order as a customer (or use an existing completed order). 4. Customer who bought the product clicks Download.",
+              "then": "File downloads. Redirect may go to a short-lived signed cloud URL. No PHP error.",
+              "description": "Given: Woo downloadable products are in scope. PRIVATE-DL exists. Mark Skipped if Woo downloads are out of scope.\nWhen: 1. Set PRIVATE-DL Cloud Access = Private. 2. Point a downloadable product file URL at that media. 3. Place a test order as a customer (or use an existing completed order). 4. Customer who bought the product clicks Download.",
+              "expectedResult": "File downloads. Redirect may go to a short-lived signed cloud URL. No PHP error."
+            },
+            {
+              "id": "TC-WOO-03",
+              "title": "Stranger cannot use a permanent public cloud link",
+              "priority": "P0",
+              "where": "Incognito / logged-out browser",
+              "url": "",
+              "given": "Woo private downloads in scope. PRIVATE-DL is private.",
+              "when": "Try the raw bucket/CDN URL of PRIVATE-DL without a fresh signature (copy from File Manager permanent-style URL if shown, or strip query signature).",
+              "then": "Access denied / 403 / does not download the product. Product page HTML does not leak a long-lived public object URL for that private file.",
+              "description": "Given: Woo private downloads in scope. PRIVATE-DL is private.\nWhen: Try the raw bucket/CDN URL of PRIVATE-DL without a fresh signature (copy from File Manager permanent-style URL if shown, or strip query signature).",
+              "expectedResult": "Access denied / 403 / does not download the product. Product page HTML does not leak a long-lived public object URL for that private file."
+            }
+          ]
+        },
+        {
+          "id": "edd",
+          "title": "Easy Digital Downloads",
+          "testCases": [
+            {
+              "id": "TC-EDD-01",
+              "title": "Authorized EDD download works",
+              "priority": "P0",
+              "where": "EDD Downloads product using PRIVATE-DL; complete a test purchase; use the EDD download link.",
+              "url": "",
+              "given": "EDD is in scope. Mark Skipped if EDD is not installed.",
+              "when": "Authorized customer downloads.",
+              "then": "File is delivered (signed redirect if EDD method is redirect).",
+              "description": "Given: EDD is in scope. Mark Skipped if EDD is not installed.\nWhen: Authorized customer downloads.",
+              "expectedResult": "File is delivered (signed redirect if EDD method is redirect)."
+            },
+            {
+              "id": "TC-EDD-02",
+              "title": "Site loads when EDD is not installed",
+              "priority": "P1",
+              "where": "A site without Easy Digital Downloads",
+              "url": "",
+              "given": "This site does not have EDD, or use a clone without EDD.",
+              "when": "Browse wp-admin and the front.",
+              "then": "No fatal “class EDD not found”. Plugin screens still open.",
+              "description": "Given: This site does not have EDD, or use a clone without EDD.\nWhen: Browse wp-admin and the front.",
+              "expectedResult": "No fatal “class EDD not found”. Plugin screens still open."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wp-cli",
+      "title": "12. WP-CLI",
+      "description": "WordPress root in terminal (staging). Prefer --limit. Do not run `wp acoofmp remove` without a tiny limit.",
+      "subsections": [
+        {
+          "id": "cli-commands",
+          "title": "acoofmp commands",
+          "testCases": [
+            {
+              "id": "TC-CLI-01",
+              "title": "Help lists commands",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "WP-CLI exists, or mark Skipped.",
+              "when": "wp help acoofmp",
+              "then": "Lists: offload, restore, delete-local, remove, verify, status.",
+              "description": "Given: WP-CLI exists, or mark Skipped.\nWhen: wp help acoofmp",
+              "expectedResult": "Lists: offload, restore, delete-local, remove, verify, status."
+            },
+            {
+              "id": "TC-CLI-02",
+              "title": "status matches Dashboard",
+              "priority": "P0",
+              "where": "Terminal + Dashboard",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#dashboard",
+              "given": "WP-CLI exists.",
+              "when": "wp acoofmp status then open Dashboard.",
+              "then": "Same kind of totals (Offloaded, Verified, Awaiting Verification, Failed, Local Removed). Exact match may lag by a cache refresh — refresh Dashboard if needed.",
+              "description": "Given: WP-CLI exists.\nWhen: wp acoofmp status then open Dashboard.",
+              "expectedResult": "Same kind of totals (Offloaded, Verified, Awaiting Verification, Failed, Local Removed). Exact match may lag by a cache refresh — refresh Dashboard if needed."
+            },
+            {
+              "id": "TC-CLI-03",
+              "title": "offload small batch",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "WP-CLI exists. Staging.",
+              "when": "wp acoofmp offload --limit=10",
+              "then": "Finishes cleanly. Done. success=… failed=… skipped=… then success. Those files show Offloaded in Media Library.",
+              "description": "Given: WP-CLI exists. Staging.\nWhen: wp acoofmp offload --limit=10",
+              "expectedResult": "Finishes cleanly. Done. success=… failed=… skipped=… then success. Those files show Offloaded in Media Library."
+            },
+            {
+              "id": "TC-CLI-04",
+              "title": "skip-failed",
+              "priority": "P1",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "At least one Failed attachment.",
+              "when": "wp acoofmp offload --limit=10 --skip-failed",
+              "then": "Failed items are not picked as candidates. Command still finishes.",
+              "description": "Given: At least one Failed attachment.\nWhen: wp acoofmp offload --limit=10 --skip-failed",
+              "expectedResult": "Failed items are not picked as candidates. Command still finishes."
+            },
+            {
+              "id": "TC-CLI-05",
+              "title": "verify does not hang",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "WP-CLI exists.",
+              "when": "wp acoofmp verify --limit=10",
+              "then": "Completes (does not hang forever). Success/fail counts printed.",
+              "description": "Given: WP-CLI exists.\nWhen: wp acoofmp verify --limit=10",
+              "expectedResult": "Completes (does not hang forever). Success/fail counts printed."
+            },
+            {
+              "id": "TC-CLI-06",
+              "title": "delete-local skips unverified when safety ON",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "Safety ON. Mix of verified + unverified.",
+              "when": "wp acoofmp delete-local --limit=10",
+              "then": "Logs Candidates (safe): N | Skipped (not verified): M. If none verified: warning No verified attachments eligible for local delete. Unverified local files still on disk.",
+              "description": "Given: Safety ON. Mix of verified + unverified.\nWhen: wp acoofmp delete-local --limit=10",
+              "expectedResult": "Logs Candidates (safe): N | Skipped (not verified): M. If none verified: warning No verified attachments eligible for local delete. Unverified local files still on disk."
+            },
+            {
+              "id": "TC-CLI-07",
+              "title": "delete-local after verify",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "Some verified files with local copies.",
+              "when": "wp acoofmp delete-local --limit=10",
+              "then": "Only verified (safe) files lose local copies. Media shows Local Deleted for those.",
+              "description": "Given: Some verified files with local copies.\nWhen: wp acoofmp delete-local --limit=10",
+              "expectedResult": "Only verified (safe) files lose local copies. Media shows Local Deleted for those."
+            },
+            {
+              "id": "TC-CLI-08",
+              "title": "restore",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "Attachments whose local copies were removed.",
+              "when": "wp acoofmp restore --limit=5",
+              "then": "Local files come back for those attachments. No crash.",
+              "description": "Given: Attachments whose local copies were removed.\nWhen: wp acoofmp restore --limit=5",
+              "expectedResult": "Local files come back for those attachments. No crash."
+            },
+            {
+              "id": "TC-CLI-09",
+              "title": "remove (tiny, intentional)",
+              "priority": "P0",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "Disposable offloaded files only, local copies present. Staging.",
+              "when": "wp acoofmp remove --limit=5. There is no extra --yes prompt in CLI — your confirmation is the limit + staging.",
+              "then": "Those 5 (or fewer candidates) are removed from cloud. Media shows Not offloaded.",
+              "description": "Given: Disposable offloaded files only, local copies present. Staging.\nWhen: wp acoofmp remove --limit=5. There is no extra --yes prompt in CLI — your confirmation is the limit + staging.",
+              "expectedResult": "Those 5 (or fewer candidates) are removed from cloud. Media shows Not offloaded."
+            },
+            {
+              "id": "TC-CLI-10",
+              "title": "verify --async",
+              "priority": "P0",
+              "where": "Terminal + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "WP-CLI exists.",
+              "when": "wp acoofmp verify --limit=5 --async",
+              "then": "Returns immediately (verify enqueued / Job UUID). Bulk Operations shows a Verify offloads job.",
+              "description": "Given: WP-CLI exists.\nWhen: wp acoofmp verify --limit=5 --async",
+              "expectedResult": "Returns immediately (verify enqueued / Job UUID). Bulk Operations shows a Verify offloads job."
+            },
+            {
+              "id": "TC-CLI-11",
+              "title": "failures exit non-zero",
+              "priority": "P1",
+              "where": "WordPress root in terminal",
+              "url": "",
+              "given": "You can cause a fail (e.g. verify after deleting a cloud object).",
+              "when": "Run the command that processes that item.",
+              "then": "Output includes failed count. Process exits with error (not a silent success).",
+              "description": "Given: You can cause a fail (e.g. verify after deleting a cloud object).\nWhen: Run the command that processes that item.",
+              "expectedResult": "Output includes failed count. Process exits with error (not a silent success)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "csv-reports",
+      "title": "13. CSV reports (admin only)",
+      "description": "P0. Same exports from Dashboard and Bulk Operations.",
+      "subsections": [
+        {
+          "id": "csv-exports",
+          "title": "Exports and access",
+          "testCases": [
+            {
+              "id": "TC-CSV-01",
+              "title": "Same CSVs from Bulk Operations",
+              "priority": "P0",
+              "where": "Bulk Operations → Durable Job Engine → Export Failed CSV / Export Verification CSV",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "",
+              "when": "Click each.",
+              "then": "Same filenames as Dashboard. Open cleanly. Spot-check 2 known IDs vs Media Library.",
+              "description": "When: Click each.",
+              "expectedResult": "Same filenames as Dashboard. Open cleanly. Spot-check 2 known IDs vs Media Library."
+            },
+            {
+              "id": "TC-CSV-02",
+              "title": "Job failure CSV",
+              "priority": "P0",
+              "where": "Job table → a job with Failed > 0 → View failures → Export CSV",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A job with Failed > 0.",
+              "when": "Export.",
+              "then": "CSV lists failed items for that job. IDs/reasons match the on-screen failure list.",
+              "description": "Given: A job with Failed > 0.\nWhen: Export.",
+              "expectedResult": "CSV lists failed items for that job. IDs/reasons match the on-screen failure list."
+            },
+            {
+              "id": "TC-CSV-03",
+              "title": "Non-admin cannot download",
+              "priority": "P0",
+              "where": "Incognito, or a user with role Editor / Subscriber (no manage_options)",
+              "url": "/wp-json/acoofmp-api/v1/media/export/failed",
+              "given": "",
+              "when": "While logged out or as non-admin, open /wp-json/acoofmp-api/v1/media/export/failed and /wp-json/acoofmp-api/v1/media/export/verification.",
+              "then": "401/403 (not a CSV of customer data). Admin session can download.",
+              "description": "When: While logged out or as non-admin, open /wp-json/acoofmp-api/v1/media/export/failed and /wp-json/acoofmp-api/v1/media/export/verification.",
+              "expectedResult": "401/403 (not a CSV of customer data). Admin session can download."
+            },
+            {
+              "id": "TC-CSV-04",
+              "title": "Large library still exports",
+              "priority": "P1",
+              "where": "Dashboard or Bulk Operations CSV export",
+              "url": "",
+              "given": "A bigger library (hundreds+).",
+              "when": "Export verification CSV.",
+              "then": "Download completes. WP admin is not frozen forever. File is readable.",
+              "description": "Given: A bigger library (hundreds+).\nWhen: Export verification CSV.",
+              "expectedResult": "Download completes. WP admin is not frozen forever. File is readable."
+            },
+            {
+              "id": "TC-CSV-05",
+              "title": "Retry failed then re-export",
+              "priority": "P1",
+              "where": "Job with failures → Retry failed",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A job with failures.",
+              "when": "After retry, export failed CSV / verification CSV again.",
+              "then": "Fixed items leave Failed (or show verified). Remaining failures still listed.",
+              "description": "Given: A job with failures.\nWhen: After retry, export failed CSV / verification CSV again.",
+              "expectedResult": "Fixed items leave Failed (or show verified). Remaining failures still listed."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "regression",
+      "title": "P1 — Basic regression",
+      "description": "Run after P0. Confirm update did not break existing surfaces.",
+      "subsections": [
+        {
+          "id": "basic-regression",
+          "title": "Core plugin surfaces",
+          "testCases": [
+            {
+              "id": "TC-REG-01",
+              "title": "Update does not force reconnect / re-upload",
+              "priority": "P1",
+              "where": "After activating/updating 6.2.0 → Storage Provider + Media Library",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Site already had credentials and offloads before 6.2.0.",
+              "when": "Open Storage Provider and Media Library.",
+              "then": "Existing credentials and offloads remain. You are not forced to re-upload the library.",
+              "description": "Given: Site already had credentials and offloads before 6.2.0.\nWhen: Open Storage Provider and Media Library.",
+              "expectedResult": "Existing credentials and offloads remain. You are not forced to re-upload the library."
+            },
+            {
+              "id": "TC-REG-02",
+              "title": "Save credentials, verify, pick bucket",
+              "priority": "P1",
+              "where": "Storage Provider",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "You can save provider settings on staging.",
+              "when": "Save, verify connection, select bucket.",
+              "then": "Save, verify connection, select bucket all work.",
+              "description": "Given: You can save provider settings on staging.\nWhen: Save, verify connection, select bucket.",
+              "expectedResult": "Save, verify connection, select bucket all work."
+            },
+            {
+              "id": "TC-REG-03",
+              "title": "Copy new files ON uploads to cloud",
+              "priority": "P1",
+              "where": "General Settings → Media & Rewriting → Copy new files to bucket ON → Media → Add New",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "Copy new files to bucket is ON.",
+              "when": "Upload a new file via Media → Add New.",
+              "then": "New file goes to cloud. Front loads. Thumbnails / srcset load.",
+              "description": "Given: Copy new files to bucket is ON.\nWhen: Upload a new file via Media → Add New.",
+              "expectedResult": "New file goes to cloud. Front loads. Thumbnails / srcset load."
+            },
+            {
+              "id": "TC-REG-04",
+              "title": "CDN URLs",
+              "priority": "P1",
+              "where": "General Settings → CDN & Delivery (if CDN on)",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "CDN is On, or mark Skipped.",
+              "when": "View front-end media.",
+              "then": "Front-end media URLs use the CDN host and load.",
+              "description": "Given: CDN is On, or mark Skipped.\nWhen: View front-end media.",
+              "expectedResult": "Front-end media URLs use the CDN host and load."
+            },
+            {
+              "id": "TC-REG-05",
+              "title": "Keep local copies matches setting",
+              "priority": "P1",
+              "where": "General Settings → Media & Rewriting",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "",
+              "when": "Confirm keep-local setting vs files on disk (separate from Delete from Server).",
+              "then": "Files stay or leave locally as configured.",
+              "description": "When: Confirm keep-local setting vs files on disk (separate from Delete from Server).",
+              "expectedResult": "Files stay or leave locally as configured."
+            },
+            {
+              "id": "TC-REG-06",
+              "title": "Legacy Bulk Operation cards",
+              "priority": "P1",
+              "where": "Bulk Operations → older cards (below Durable Job Engine)",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "",
+              "when": "Run Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server. Check Pause on the older progress UI.",
+              "then": "Those cards still run. Pause still works on the older progress UI.",
+              "description": "When: Run Sync to Cloud, Remove from Cloud, Delete from Server, Download to Server. Check Pause on the older progress UI.",
+              "expectedResult": "Those cards still run. Pause still works on the older progress UI."
+            },
+            {
+              "id": "TC-REG-07",
+              "title": "ACF image field",
+              "priority": "P1",
+              "where": "A post/field with an ACF image (if ACF exists)",
+              "url": "",
+              "given": "ACF exists, or mark Skipped.",
+              "when": "View the ACF image on front/admin.",
+              "then": "Correct image, cloud URL OK.",
+              "description": "Given: ACF exists, or mark Skipped.\nWhen: View the ACF image on front/admin.",
+              "expectedResult": "Correct image, cloud URL OK."
+            },
+            {
+              "id": "TC-REG-08",
+              "title": "Offload vs Remove mutual exclusion",
+              "priority": "P1",
+              "where": "Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "",
+              "when": "Start Durable Sync, then try Start Durable Remove (and the reverse).",
+              "then": "Second button Blocked by Offload/Remove job. Message like “This process is already running.” HTTP conflict, no second job.",
+              "description": "When: Start Durable Sync, then try Start Durable Remove (and the reverse).",
+              "expectedResult": "Second button Blocked by Offload/Remove job. Message like “This process is already running.” HTTP conflict, no second job."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "errors",
+      "title": "4. Error messages",
+      "description": "Clear messages, not stack dumps.",
+      "subsections": [
+        {
+          "id": "error-messages",
+          "title": "Provider and job errors",
+          "testCases": [
+            {
+              "id": "TC-ERR-01",
+              "title": "Wrong access key",
+              "priority": "P1",
+              "where": "Storage Provider → save bad key/secret → verify",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "You can temporarily save bad credentials on staging.",
+              "when": "Save a bad key/secret and verify.",
+              "then": "Clear credentials-style message, not a raw stack dump. Restore good credentials after.",
+              "description": "Given: You can temporarily save bad credentials on staging.\nWhen: Save a bad key/secret and verify.",
+              "expectedResult": "Clear credentials-style message, not a raw stack dump. Restore good credentials after."
+            },
+            {
+              "id": "TC-ERR-02",
+              "title": "Missing upload permission",
+              "priority": "P1",
+              "where": "Storage Provider",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Credentials that can list but not PutObject (if you can simulate).",
+              "when": "Try an upload or connection verify.",
+              "then": "Can’t-upload / permission guidance.",
+              "description": "Given: Credentials that can list but not PutObject (if you can simulate).\nWhen: Try an upload or connection verify.",
+              "expectedResult": "Can’t-upload / permission guidance."
+            },
+            {
+              "id": "TC-ERR-03",
+              "title": "Wrong bucket or region",
+              "priority": "P1",
+              "where": "Storage Provider",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "You can set a wrong bucket or region on staging.",
+              "when": "Save wrong bucket/region and verify.",
+              "then": "Clear configuration message.",
+              "description": "Given: You can set a wrong bucket or region on staging.\nWhen: Save wrong bucket/region and verify.",
+              "expectedResult": "Clear configuration message."
+            },
+            {
+              "id": "TC-ERR-04",
+              "title": "File Manager diagnose",
+              "priority": "P1",
+              "where": "File Manager → missing mapped object → Diagnose",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "A mapped object is missing.",
+              "when": "Click Diagnose.",
+              "then": "Explains what’s wrong and what to try next.",
+              "description": "Given: A mapped object is missing.\nWhen: Click Diagnose.",
+              "expectedResult": "Explains what’s wrong and what to try next."
+            },
+            {
+              "id": "TC-ERR-05",
+              "title": "Permanent vs temporary failures",
+              "priority": "P1",
+              "where": "Durable job with a permission error vs a brief network blip",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "You can observe a permission error and a brief network blip.",
+              "when": "Watch retry behavior.",
+              "then": "Permanent permission problems do not retry forever. Temporary errors retry, then fail clearly.",
+              "description": "Given: You can observe a permission error and a brief network blip.\nWhen: Watch retry behavior.",
+              "expectedResult": "Permanent permission problems do not retry forever. Temporary errors retry, then fail clearly."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cache-busting",
+      "title": "5. Cache busting",
+      "description": "General Settings → CDN & Delivery → Cache Busting.",
+      "subsections": [
+        {
+          "id": "cdn-cache",
+          "title": "CDN & Delivery",
+          "testCases": [
+            {
+              "id": "TC-CACHE-01",
+              "title": "OFF: no acoofmp_v",
+              "priority": "P1",
+              "where": "General Settings → CDN & Delivery → Cache Busting",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "Cache Busting is OFF.",
+              "when": "View front-end media URLs.",
+              "then": "Front URLs have no acoofmp_v=.",
+              "description": "Given: Cache Busting is OFF.\nWhen: View front-end media URLs.",
+              "expectedResult": "Front URLs have no acoofmp_v=."
+            },
+            {
+              "id": "TC-CACHE-02",
+              "title": "ON after re-offload",
+              "priority": "P1",
+              "where": "General Settings → CDN & Delivery → Cache Busting",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "",
+              "when": "Turn ON, save, update/re-offload a file, view front.",
+              "then": "URL has version query. Bucket object key/path unchanged. Image loads. Srcset URLs also get the version. Turn OFF → new pages stop adding it.",
+              "description": "When: Turn ON, save, update/re-offload a file, view front.",
+              "expectedResult": "URL has version query. Bucket object key/path unchanged. Image loads. Srcset URLs also get the version. Turn OFF → new pages stop adding it."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "static-assets",
+      "title": "6. Static assets",
+      "description": "Settings: General Settings → Files & Assets. Actions: Bulk Operations → Static Assets.",
+      "subsections": [
+        {
+          "id": "static-asset-jobs",
+          "title": "Theme & plugin CSS/JS/fonts",
+          "testCases": [
+            {
+              "id": "TC-SA-01",
+              "title": "OFF by default; local CSS/JS",
+              "priority": "P1",
+              "where": "General Settings → Files & Assets",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "",
+              "when": "Confirm default and front-end assets before sync.",
+              "then": "Theme/plugin CSS/JS stay on WordPress. Turning the feature ON does not break the site before sync.",
+              "description": "When: Confirm default and front-end assets before sync.",
+              "expectedResult": "Theme/plugin CSS/JS stay on WordPress. Turning the feature ON does not break the site before sync."
+            },
+            {
+              "id": "TC-SA-02",
+              "title": "Settings persist",
+              "priority": "P1",
+              "where": "General Settings → Files & Assets",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "",
+              "when": "Enable Static Asset Offloading; tick CSS/JS/fonts/theme/plugin; include/exclude rules; save.",
+              "then": "Values stick after reload. UI mentions Bulk Operations to sync/remove.",
+              "description": "When: Enable Static Asset Offloading; tick CSS/JS/fonts/theme/plugin; include/exclude rules; save.",
+              "expectedResult": "Values stick after reload. UI mentions Bulk Operations to sync/remove."
+            },
+            {
+              "id": "TC-SA-03",
+              "title": "Sync job",
+              "priority": "P1",
+              "where": "Bulk Operations → Static Assets",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "Static asset offloading is configured.",
+              "when": "Sync Static Assets.",
+              "then": "Background job, progress moves, Pause/Resume/Stop work, no duplicate Sync/Remove while active. After sync, eligible CSS/JS can load from cloud/CDN. CSS still styles the site (not downloaded as a wrong MIME). Fonts/icons still load. Refresh Status updates counts.",
+              "description": "Given: Static asset offloading is configured.\nWhen: Sync Static Assets.",
+              "expectedResult": "Background job, progress moves, Pause/Resume/Stop work, no duplicate Sync/Remove while active. After sync, eligible CSS/JS can load from cloud/CDN. CSS still styles the site (not downloaded as a wrong MIME). Fonts/icons still load. Refresh Status updates counts."
+            },
+            {
+              "id": "TC-SA-04",
+              "title": "Remove",
+              "priority": "P1",
+              "where": "Bulk Operations → Static Assets",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "Static assets were synced.",
+              "when": "Remove from Cloud (confirm).",
+              "then": "Cloud copies removed. Local theme/plugin files still on disk. Site falls back to local URLs. Counts toward zero.",
+              "description": "Given: Static assets were synced.\nWhen: Remove from Cloud (confirm).",
+              "expectedResult": "Cloud copies removed. Local theme/plugin files still on disk. Site falls back to local URLs. Counts toward zero."
+            },
+            {
+              "id": "TC-SA-05",
+              "title": "Sync failure keeps local URLs",
+              "priority": "P1",
+              "where": "Bulk Operations → Static Assets",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A sync can fail (or inspect a failed job).",
+              "when": "Observe a failed static-asset sync.",
+              "then": "Site does not break. Failure visible in job failures.",
+              "description": "Given: A sync can fail (or inspect a failed job).\nWhen: Observe a failed static-asset sync.",
+              "expectedResult": "Site does not break. Failure visible in job failures."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "file-manager",
+      "title": "7. File Manager",
+      "description": "Offload Media → File Manager (#file-manager).",
+      "subsections": [
+        {
+          "id": "file-manager-ui",
+          "title": "Browse, actions, safety",
+          "testCases": [
+            {
+              "id": "TC-FM-01",
+              "title": "Browse",
+              "priority": "P1",
+              "where": "Offload Media → File Manager",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "",
+              "when": "Open File Manager and use navigation controls.",
+              "then": "Page loads; breadcrumbs like Media Storage / uploads / …; Back / Forward / Refresh; Grid and List; sort + type filters; search in current folder; controls aligned. Provider limits (e.g. R2) shown honestly.",
+              "description": "When: Open File Manager and use navigation controls.",
+              "expectedResult": "Page loads; breadcrumbs like Media Storage / uploads / …; Back / Forward / Refresh; Grid and List; sort + type filters; search in current folder; controls aligned. Provider limits (e.g. R2) shown honestly."
+            },
+            {
+              "id": "TC-FM-02",
+              "title": "Single-item actions",
+              "priority": "P1",
+              "where": "File Manager",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "",
+              "when": "Open folders; upload button + drag-drop; create folder; click row opens details (checkbox does not); ⋮ menu; Rename/Move; Copy/Duplicate; Delete confirms; Download; Share/temp link when supported.",
+              "then": "Those actions work. Metadata/versions supported or clearly unsupported.",
+              "description": "When: Open folders; upload button + drag-drop; create folder; click row opens details (checkbox does not); ⋮ menu; Rename/Move; Copy/Duplicate; Delete confirms; Download; Share/temp link when supported.",
+              "expectedResult": "Those actions work. Metadata/versions supported or clearly unsupported."
+            },
+            {
+              "id": "TC-FM-03",
+              "title": "Multi-select",
+              "priority": "P1",
+              "where": "File Manager",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "",
+              "when": "Checkbox selects without opening details; Shift-click range; select page / clear; bulk delete confirms (durable job when large); bulk copy/move; ZIP/multi download if used.",
+              "then": "Multi-select and bulk actions behave as described.",
+              "description": "When: Checkbox selects without opening details; Shift-click range; select page / clear; bulk delete confirms (durable job when large); bulk copy/move; ZIP/multi download if used.",
+              "expectedResult": "Multi-select and bulk actions behave as described."
+            },
+            {
+              "id": "TC-FM-04",
+              "title": "WP media link",
+              "priority": "P1",
+              "where": "File Manager",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "",
+              "when": "Inspect a linked WP media object. Import a cloud-only file. Rename/move a linked file.",
+              "then": "Linked objects show attachment info. Random cloud-only files are not auto-added. Import to Media Library works for a cloud-only file. After rename/move of a linked file, the media item still resolves on the site.",
+              "description": "When: Inspect a linked WP media object. Import a cloud-only file. Rename/move a linked file.",
+              "expectedResult": "Linked objects show attachment info. Random cloud-only files are not auto-added. Import to Media Library works for a cloud-only file. After rename/move of a linked file, the media item still resolves on the site."
+            },
+            {
+              "id": "TC-FM-05",
+              "title": "Safety",
+              "priority": "P1",
+              "where": "File Manager + REST",
+              "url": "/wp-json/acoofmp-api/v1/files/",
+              "given": "",
+              "when": "Try path traversal. Call /wp-json/acoofmp-api/v1/files/* as non-admin. Watch Network for secrets.",
+              "then": "Paths like ../ rejected. Non-admin cannot call /wp-json/acoofmp-api/v1/files/* (401/403). Secrets never appear in Network responses. Diagnose panel is understandable.",
+              "description": "When: Try path traversal. Call /wp-json/acoofmp-api/v1/files/* as non-admin. Watch Network for secrets.",
+              "expectedResult": "Paths like ../ rejected. Non-admin cannot call /wp-json/acoofmp-api/v1/files/* (401/403). Secrets never appear in Network responses. Diagnose panel is understandable."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "troubleshoot",
+      "title": "8. Troubleshoot",
+      "description": "Offload Media → Troubleshoot (#troubleshoot).",
+      "subsections": [
+        {
+          "id": "health-checks",
+          "title": "Health, credentials, diagnostics",
+          "testCases": [
+            {
+              "id": "TC-TS-01",
+              "title": "Health check",
+              "priority": "P1",
+              "where": "Offload Media → Troubleshoot",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#troubleshoot",
+              "given": "Provider config is good.",
+              "when": "Open Troubleshoot and run the connection check.",
+              "then": "Page loads. Connection check passes when config is good.",
+              "description": "Given: Provider config is good.\nWhen: Open Troubleshoot and run the connection check.",
+              "expectedResult": "Page loads. Connection check passes when config is good."
+            },
+            {
+              "id": "TC-TS-02",
+              "title": "Bad credentials fail clearly",
+              "priority": "P1",
+              "where": "Troubleshoot",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#troubleshoot",
+              "given": "You can break credentials on purpose on staging.",
+              "when": "Break credentials on purpose, run check. Restore credentials after.",
+              "then": "Check fails clearly.",
+              "description": "Given: You can break credentials on purpose on staging.\nWhen: Break credentials on purpose, run check. Restore credentials after.",
+              "expectedResult": "Check fails clearly."
+            },
+            {
+              "id": "TC-TS-03",
+              "title": "Media / URL checks",
+              "priority": "P1",
+              "where": "Troubleshoot",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#troubleshoot",
+              "given": "",
+              "when": "Run media/URL checks. Export diagnostics. Use import/clear tools if present.",
+              "then": "Missing/mismatched media and URL/delivery checks are useful. Export diagnostics downloads a report. Import/clear tools still usable. Running checks does not wipe settings or mappings.",
+              "description": "When: Run media/URL checks. Export diagnostics. Use import/clear tools if present.",
+              "expectedResult": "Missing/mismatched media and URL/delivery checks are useful. Export diagnostics downloads a report. Import/clear tools still usable. Running checks does not wipe settings or mappings."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "providers",
+      "title": "14. Provider spot-check",
+      "description": "For each provider you care about this release, repeat: Connect → File Manager browse → upload → download → copy → delete → front-end media loads → Durable Sync sample → Start Verification sample → private access (or N/A) → delete-local safety once. R2: no object ACL — Cloud Access N/A. GCS UBLA: no per-object ACL.",
+      "subsections": [
+        {
+          "id": "provider-matrix",
+          "title": "Thin path per provider",
+          "testCases": [
+            {
+              "id": "TC-PROV-S3",
+              "title": "Amazon S3 thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Amazon S3 is in scope for this pass, or mark Skipped.",
+              "when": "Connect → File Manager browse → upload → download → copy → delete → front-end media loads → Durable Sync sample → Start Verification sample → private access → delete-local safety once.",
+              "then": "All steps Pass (or Fail with notes). Private/Cloud Access is typically supported.",
+              "description": "Given: Amazon S3 is in scope for this pass, or mark Skipped.\nWhen: Connect → File Manager browse → upload → download → copy → delete → front-end media loads → Durable Sync sample → Start Verification sample → private access → delete-local safety once.",
+              "expectedResult": "All steps Pass (or Fail with notes). Private/Cloud Access is typically supported."
+            },
+            {
+              "id": "TC-PROV-R2",
+              "title": "Cloudflare R2 thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Cloudflare R2 is in scope, or mark Skipped.",
+              "when": "Same thin path as S3.",
+              "then": "All steps Pass except Cloud Access / object ACL: N/A — confirm UI says unsupported.",
+              "description": "Given: Cloudflare R2 is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
+              "expectedResult": "All steps Pass except Cloud Access / object ACL: N/A — confirm UI says unsupported."
+            },
+            {
+              "id": "TC-PROV-GCS",
+              "title": "Google Cloud thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Google Cloud is in scope, or mark Skipped.",
+              "when": "Same thin path as S3.",
+              "then": "Pass / Fail. If UBLA: no per-object ACL — Cloud Access N/A.",
+              "description": "Given: Google Cloud is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
+              "expectedResult": "Pass / Fail. If UBLA: no per-object ACL — Cloud Access N/A."
+            },
+            {
+              "id": "TC-PROV-SPACES",
+              "title": "DigitalOcean Spaces thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "DigitalOcean Spaces is in scope, or mark Skipped.",
+              "when": "Same thin path as S3.",
+              "then": "Pass / Fail. Object ACL typically supported.",
+              "description": "Given: DigitalOcean Spaces is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
+              "expectedResult": "Pass / Fail. Object ACL typically supported."
+            },
+            {
+              "id": "TC-PROV-WASABI",
+              "title": "Wasabi thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "Wasabi is in scope, or mark Skipped.",
+              "when": "Same thin path as S3.",
+              "then": "Pass / Fail. Object ACL typically supported.",
+              "description": "Given: Wasabi is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
+              "expectedResult": "Pass / Fail. Object ACL typically supported."
+            },
+            {
+              "id": "TC-PROV-MINIO",
+              "title": "MinIO thin path",
+              "priority": "P1",
+              "where": "Storage Provider + File Manager + Media + Bulk Operations",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#storage-provider",
+              "given": "MinIO is in scope, or mark Skipped.",
+              "when": "Same thin path as S3.",
+              "then": "Pass / Fail. Object ACL typically supported.",
+              "description": "Given: MinIO is in scope, or mark Skipped.\nWhen: Same thin path as S3.",
+              "expectedResult": "Pass / Fail. Object ACL typically supported."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "polish",
+      "title": "15. Final polish",
+      "description": "Sign-off surface. P0 cases (Dashboard verify, Start Verification, Media Library, delete-local safety, private downloads, CLI, CSV) should already be done.",
+      "subsections": [
+        {
+          "id": "final-polish",
+          "title": "Sidebar, logs, restore settings",
+          "testCases": [
+            {
+              "id": "TC-POL-01",
+              "title": "Sidebar File Manager + active highlight",
+              "priority": "P1",
+              "where": "Click each Main item",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#file-manager",
+              "given": "",
+              "when": "Click each Main sidebar item, including File Manager. Refresh on #file-manager.",
+              "then": "File Manager is in the sidebar. Active item is highlighted. Refresh keeps the same hash screen (#file-manager stays File Manager).",
+              "description": "When: Click each Main sidebar item, including File Manager. Refresh on #file-manager.",
+              "expectedResult": "File Manager is in the sidebar. Active item is highlighted. Refresh keeps the same hash screen (#file-manager stays File Manager)."
+            },
+            {
+              "id": "TC-POL-02",
+              "title": "No fatals / no error popups",
+              "priority": "P1",
+              "where": "Plugin screens + PHP log",
+              "url": "",
+              "given": "",
+              "when": "Click around plugin screens used in this pass.",
+              "then": "PHP log has no fatals during this pass. No repeated server error popups while clicking around.",
+              "description": "When: Click around plugin screens used in this pass.",
+              "expectedResult": "PHP log has no fatals during this pass. No repeated server error popups while clicking around."
+            },
+            {
+              "id": "TC-POL-03",
+              "title": "Optional stress",
+              "priority": "P1",
+              "where": "Bulk Operations Durable Job Engine",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#bulk-operations",
+              "given": "A larger library, or mark Skipped if not in scope.",
+              "when": "Sync 100+ files; Verify 100+ files.",
+              "then": "Pause/resume and finish.",
+              "description": "Given: A larger library, or mark Skipped if not in scope.\nWhen: Sync 100+ files; Verify 100+ files.",
+              "expectedResult": "Pause/resume and finish."
+            },
+            {
+              "id": "TC-POL-04",
+              "title": "Turn optional features back OFF",
+              "priority": "P0",
+              "where": "General Settings",
+              "url": "/wp-admin/admin.php?page=offload-media-settings#general-settings",
+              "given": "",
+              "when": "Leave cache busting / static assets / safety in the intended production state.",
+              "then": "Site healthy. Team knows: with safety ON, verify before mass Delete from Server.",
+              "description": "When: Leave cache busting / static assets / safety in the intended production state.",
+              "expectedResult": "Site healthy. Team knows: with safety ON, verify before mass Delete from Server."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+name = "offload-testcases"
+compatibility_date = "2026-08-17"
+pages_build_output_dir = "public"
+
+# Production KV namespace ID is injected in GitHub Actions from
+# CLOUDFLARE_KV_NAMESPACE_ID. Do not commit account or KV identifiers.
+# Local development: npm run dev (uses --kv=TEST_RESULTS).
