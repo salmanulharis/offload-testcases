@@ -1,5 +1,9 @@
 # Offload Test Cases
 
+**Live site:** https://offload-testcases.pages.dev
+
+The same URL is written into each [GitHub Release](https://github.com/salmanulharis/offload-testcases/releases) when a tag deploys.
+
 A small HTML checklist for tracking plugin tests. Hosted on Cloudflare Pages. Test **definitions** live in the repo. Test **results and comments** live in Cloudflare KV.
 
 Adding or replacing `public/data/test-cases.json` does not clear KV. Restarting a section or the full run only changes results.
@@ -129,7 +133,7 @@ If deploy fails, read the step that turned red. `whoami` failing means the API t
 
 To deploy without a tag, open that workflow and choose **Run workflow**.
 
-After a successful run, open [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages), select **offload-testcases**, and use the `*.pages.dev` URL.
+After a successful tag deploy, open [Releases](https://github.com/salmanulharis/offload-testcases/releases). The release notes include the live Pages URL (`https://offload-testcases.pages.dev`). You can also open the project in [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages).
 
 If you also connect the repo in the Cloudflare dashboard, turn off Cloudflare’s automatic git deploys so only GitHub Actions deploys. Two pipelines can fight over KV bindings.
 
