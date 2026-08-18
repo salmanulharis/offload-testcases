@@ -28,9 +28,12 @@
         <div class="more">
           <button type="button" id="btn-more" aria-expanded="false" aria-controls="more-menu">More</button>
           <div id="more-menu" class="more__menu" hidden>
+            <p class="more__label">Data</p>
             <button type="button" id="btn-export">Export JSON</button>
             <button type="button" id="btn-import">Import JSON</button>
+            <p class="more__label">Test run</p>
             <button type="button" id="btn-reset-all" class="danger">Restart full test</button>
+            <p class="more__label">Help</p>
             <button type="button" id="btn-keys">Keyboard shortcuts</button>
           </div>
         </div>
@@ -39,41 +42,50 @@
     </header>
 
     <div id="banner" class="banner" hidden></div>
-    <div id="complete-banner" class="complete" hidden></div>
+    <div id="toast" class="toast" hidden></div>
 
-    <section class="run-overview" aria-labelledby="progress-heading">
-      <div class="run-overview__head">
-        <div>
-          <h2 id="progress-heading">Testing progress</h2>
-          <p id="progress-summary" class="progress-summary">—</p>
+    <div id="app-overview">
+      <div id="complete-banner" class="complete" hidden></div>
+
+      <section class="run-overview" aria-labelledby="progress-heading">
+        <div class="run-overview__head">
+          <div>
+            <h2 id="progress-heading">Testing progress</h2>
+            <p id="progress-summary" class="progress-summary">—</p>
+          </div>
+          <p id="priority-summary" class="priority-summary"></p>
         </div>
-        <p id="priority-summary" class="priority-summary"></p>
-      </div>
-      <div class="bar" role="progressbar" aria-labelledby="progress-summary"><span id="progress-bar"></span></div>
-      <ul id="progress-counts" class="counts"></ul>
-      <div id="next-card" class="next-card"></div>
-    </section>
+        <div class="bar" role="progressbar" aria-labelledby="progress-summary"><span id="progress-bar"></span></div>
+        <ul id="progress-counts" class="counts"></ul>
+      </section>
 
-    <div class="toolbar">
-      <label class="search">
-        <span class="visually-hidden">Search tests</span>
-        <input id="search" type="search" placeholder="Search id, title, where…" />
-      </label>
-      <div id="quick-filters" class="chips" role="group" aria-label="Quick filters"></div>
-      <div class="toolbar__tools">
-        <button type="button" id="btn-expand-all">Expand all</button>
-        <button type="button" id="btn-collapse-all">Collapse all</button>
+      <section id="continue-card" class="continue-card" aria-labelledby="continue-heading"></section>
+
+      <div class="toolbar">
+        <label class="search">
+          <span class="visually-hidden">Search tests</span>
+          <input id="search" type="search" placeholder="Search tests by ID, title, or section..." />
+        </label>
+        <label class="section-filter">
+          <span class="visually-hidden">Section</span>
+          <select id="section-filter" aria-label="Filter by section"></select>
+        </label>
+        <div id="quick-filters" class="chips" role="group" aria-label="Quick filters"></div>
+        <div class="toolbar__tools">
+          <button type="button" id="btn-expand-all">Expand all</button>
+          <button type="button" id="btn-collapse-all">Collapse all</button>
+        </div>
+      </div>
+      <div id="active-filters" class="filter-chips"></div>
+
+      <div class="workspace">
+        <aside id="sidebar" class="sidebar" aria-label="Test sections"></aside>
+        <main id="main" class="main"></main>
+        <aside id="detail" class="detail" aria-live="polite"></aside>
       </div>
     </div>
-    <div id="active-filters" class="filter-chips"></div>
 
-    <div class="workspace">
-      <aside id="sidebar" class="sidebar" aria-label="Test sections"></aside>
-      <main id="main" class="main"></main>
-      <aside id="detail" class="detail" aria-live="polite"></aside>
-    </div>
-
-    <div id="mobile-bar" class="mobile-bar" hidden></div>
+    <div id="app-runner" class="runner-wrap" hidden></div>
 
     <div id="modal" class="modal" hidden>
       <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -87,6 +99,48 @@
       </div>
     </div>
 
+    <div id="fail-modal" class="modal" hidden>
+      <form id="fail-form" class="modal__card" role="dialog" aria-modal="true" aria-labelledby="fail-title">
+        <h3 id="fail-title">Failure details</h3>
+        <label class="field"><span>Severity</span>
+          <select name="severity" required>
+            <option value="">Select…</option>
+            <option>Blocker</option>
+            <option>Critical</option>
+            <option>Major</option>
+            <option>Minor</option>
+          </select>
+        </label>
+        <label class="field"><span>Error message</span><input name="error" required /></label>
+        <label class="field"><span>Expected</span><textarea name="expectedResult"></textarea></label>
+        <label class="field"><span>Actual</span><textarea name="actualResult" required></textarea></label>
+        <label class="field"><span>Comments</span><textarea name="comments"></textarea></label>
+        <div class="modal__actions">
+          <button type="button" id="fail-cancel">Cancel</button>
+          <button type="submit" class="primary">Save failure</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="block-modal" class="modal" hidden>
+      <form id="block-form" class="modal__card" role="dialog" aria-modal="true" aria-labelledby="block-title">
+        <h3 id="block-title">Blocked reason</h3>
+        <fieldset class="field">
+          <legend>Why is this blocked?</legend>
+          <label><input type="radio" name="blockedReason" value="Environment unavailable" required /> Environment unavailable</label>
+          <label><input type="radio" name="blockedReason" value="Dependency unavailable" /> Dependency unavailable</label>
+          <label><input type="radio" name="blockedReason" value="Bug blocking test" /> Bug blocking test</label>
+          <label><input type="radio" name="blockedReason" value="Credentials" /> Credentials</label>
+          <label><input type="radio" name="blockedReason" value="Other" /> Other</label>
+        </fieldset>
+        <label class="field"><span>Comments</span><textarea name="comments"></textarea></label>
+        <div class="modal__actions">
+          <button type="button" id="block-cancel">Cancel</button>
+          <button type="submit" class="primary">Save blocked</button>
+        </div>
+      </form>
+    </div>
+
     <div id="keys-modal" class="modal" hidden>
       <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="keys-title">
         <h3 id="keys-title">Keyboard shortcuts</h3>
@@ -97,7 +151,10 @@
           <div><dt><kbd>S</kbd></dt><dd>Skip</dd></div>
           <div><dt><kbd>I</kbd></dt><dd>In progress</dd></div>
           <div><dt><kbd>N</kbd></dt><dd>Not tested</dd></div>
-          <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next visible</dd></div>
+          <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous / next</dd></div>
+          <div><dt><kbd>U</kbd></dt><dd>Next untested</dd></div>
+          <div><dt><kbd>Enter</kbd></dt><dd>Confirm open modal</dd></div>
+          <div><dt><kbd>Esc</kbd></dt><dd>Close modal</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>This help</dd></div>
         </dl>
         <p class="muted">Shortcuts are ignored while typing in a field.</p>

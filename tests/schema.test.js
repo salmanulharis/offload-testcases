@@ -2,22 +2,28 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   adjacentTest,
+  buildRunnerQueue,
   collectTestIds,
   countByPriority,
   countStatuses,
   emptyResultsDoc,
   extractImportedResults,
+  firstIncompleteSection,
+  firstUnresolved,
   firstWorkItem,
   flattenTestCases,
   formatFailureReport,
   getResult,
   matchesQuery,
+  nextIncompleteSection,
+  nextUnresolved,
   nextWorkItem,
   normalizeResultsDoc,
   overwriteRisk,
   remainingCount,
   resetResults,
   runOutcome,
+  testsInSection,
   upsertResult,
   validateDefinitions,
   validateResultsDoc,
@@ -227,6 +233,29 @@ test("view filters and failure report use stable case ids", () => {
   assert.equal(matchesQuery(testCase, failed, { view: "todo" }), false);
   assert.match(formatFailureReport(testCase, failed), /TC-ENV-01/);
   assert.match(formatFailureReport(testCase, failed), /AccessDenied/);
+});
+
+test("section runner starts at in-progress then not tested", () => {
+  const sectionTests = testsInSection(definitions, "environment");
+  assert.ok(sectionTests.length > 1);
+  let doc = emptyResultsDoc();
+  assert.equal(firstUnresolved(sectionTests, doc).id, sectionTests[0].id);
+  doc = upsertResult(doc, sectionTests[0].id, { status: "passed" });
+  doc = upsertResult(doc, sectionTests[2].id, { status: "in_progress" });
+  assert.equal(firstUnresolved(sectionTests, doc).id, sectionTests[2].id);
+  assert.equal(nextUnresolved(sectionTests, doc, sectionTests[0].id).id, sectionTests[1].id);
+});
+
+test("failed queue and next incomplete section stay sequential", () => {
+  let doc = emptyResultsDoc();
+  const env = testsInSection(definitions, "environment");
+  for (const item of env) doc = upsertResult(doc, item.id, { status: "passed" });
+  doc = upsertResult(doc, env[1].id, { status: "failed", error: "denied" });
+  const failed = buildRunnerQueue(definitions, doc, { mode: "failed" });
+  assert.equal(failed.length, 1);
+  assert.equal(failed[0].id, env[1].id);
+  assert.equal(firstIncompleteSection(definitions, doc)?.id, "dashboard");
+  assert.equal(nextIncompleteSection(definitions, doc, "environment")?.id, "dashboard");
 });
 
 test("overwrite risk detects failed details", () => {

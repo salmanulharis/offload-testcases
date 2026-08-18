@@ -36,7 +36,16 @@ export const RESULT_FIELDS = [
   "actualResult",
   "comments",
   "severity",
+  "blockedReason",
   "updatedAt",
+];
+
+export const BLOCKED_REASONS = [
+  "Environment unavailable",
+  "Dependency unavailable",
+  "Bug blocking test",
+  "Credentials",
+  "Other",
 ];
 
 const KV_SCHEMA_VERSION = 1;
@@ -61,6 +70,7 @@ export function emptyResult() {
     actualResult: "",
     comments: "",
     severity: "",
+    blockedReason: "",
     updatedAt: null,
   };
 }
@@ -97,6 +107,7 @@ export function normalizeResult(raw) {
     actualResult: asString(raw.actualResult),
     comments: asString(raw.comments),
     severity: asString(raw.severity),
+    blockedReason: asString(raw.blockedReason),
     updatedAt: raw.updatedAt ? asString(raw.updatedAt) : null,
   };
 
@@ -453,6 +464,54 @@ export function adjacentTest(tests, fromId, delta) {
   const next = index + delta;
   if (next < 0 || next >= tests.length) return null;
   return tests[next];
+}
+
+export function isResolvedStatus(status) {
+  return RESOLVED_STATUSES.includes(displayStatus(status));
+}
+
+export function testsInSection(definitions, sectionId) {
+  return flattenTestCases(definitions).filter((test) => test.sectionId === sectionId);
+}
+
+export function firstIncompleteSection(definitions, resultsDoc) {
+  const sections = definitions?.sections || [];
+  return (
+    sections.find((section) => remainingCount(countStatuses({ sections: [section] }, resultsDoc)) > 0) ||
+    null
+  );
+}
+
+export function nextIncompleteSection(definitions, resultsDoc, fromSectionId) {
+  const sections = definitions?.sections || [];
+  const index = sections.findIndex((section) => section.id === fromSectionId);
+  return (
+    sections.slice(index + 1).find((section) => remainingCount(countStatuses({ sections: [section] }, resultsDoc)) > 0) ||
+    firstIncompleteSection(definitions, resultsDoc)
+  );
+}
+
+export function firstUnresolved(tests, resultsDoc) {
+  const inProgress = tests.find((test) => displayStatus(getResult(resultsDoc, test.id).status) === "in_progress");
+  if (inProgress) return inProgress;
+  return tests.find((test) => displayStatus(getResult(resultsDoc, test.id).status) === "not_tested") || null;
+}
+
+export function nextUnresolved(tests, resultsDoc, fromId) {
+  const index = tests.findIndex((test) => test.id === fromId);
+  const after = tests.slice(index + 1).find((test) => isWorkStatus(getResult(resultsDoc, test.id).status));
+  return after || firstUnresolved(tests, resultsDoc);
+}
+
+export function buildRunnerQueue(definitions, resultsDoc, { mode = "section", sectionId = "", priority = "all" } = {}) {
+  let tests = flattenTestCases(definitions);
+  if (sectionId) tests = tests.filter((test) => test.sectionId === sectionId);
+  if (priority !== "all") tests = tests.filter((test) => test.priority === priority);
+  if (mode === "p0") tests = tests.filter((test) => test.priority === "P0");
+  if (mode === "failed") tests = tests.filter((test) => displayStatus(getResult(resultsDoc, test.id).status) === "failed");
+  if (mode === "blocked") tests = tests.filter((test) => displayStatus(getResult(resultsDoc, test.id).status) === "blocked");
+  if (mode === "todo") tests = tests.filter((test) => isWorkStatus(getResult(resultsDoc, test.id).status));
+  return tests;
 }
 
 export function formatFailureReport(test, result) {
