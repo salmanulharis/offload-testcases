@@ -123,7 +123,9 @@ git push origin v1.0.0
 
 You can also create a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), which creates a tag.
 
-3. **Actions → Deploy to Cloudflare Pages** runs tests, then `wrangler pages deploy`. It creates the Pages project `offload-testcases` if needed.
+3. **Actions → Deploy to Cloudflare Pages** runs these steps: tests → check secrets → bind KV → install Wrangler 4 → `wrangler whoami` → create Pages project if needed → `wrangler pages deploy` to the `main` production branch.
+
+If deploy fails, read the step that turned red. `whoami` failing means the API token is wrong. A KV id error means `CLOUDFLARE_KV_NAMESPACE_ID` is not the 32-character hex Namespace ID.
 
 To deploy without a tag, open that workflow and choose **Run workflow**.
 

@@ -2,7 +2,7 @@ import {
   emptyResultsDoc,
   normalizeResultsDoc,
   validateResultsDoc,
-} from "../../public/js/schema.js";
+} from "../lib/results-doc.js";
 
 const KEY = "test-results";
 
