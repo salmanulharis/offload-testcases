@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
       - name: Run schema tests
         run: node --test tests/schema.test.js
 
@@ -26,6 +26,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
 
       - name: Check required secrets
         env:
@@ -58,9 +63,11 @@ jobs:
           EOF
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy public --project-name=offload-testcases
+          wranglerVersion: "4"
+          packageManager: npm
+          command: pages deploy public --project-name=offload-testcases --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
