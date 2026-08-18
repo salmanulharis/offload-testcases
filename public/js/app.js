@@ -87,6 +87,8 @@ const els = {
   detail: document.getElementById("detail"),
   more: document.getElementById("btn-more"),
   moreMenu: document.getElementById("more-menu"),
+  overviewBtn: document.getElementById("btn-overview"),
+  continueBtn: document.getElementById("btn-continue"),
   keysModal: document.getElementById("keys-modal"),
   modal: document.getElementById("modal"),
   modalTitle: document.getElementById("modal-title"),
@@ -492,8 +494,18 @@ function openRunner({ mode = "section", sectionId = "", testId = "", done = fals
 
 function closeRunner() {
   state.screen = "overview";
+  if (state.runner.sectionId) {
+    state.selectedSectionId = state.runner.sectionId;
+    state.collapsed.delete(state.runner.sectionId);
+    persistCollapsed();
+  }
   persistRunner();
   render();
+  requestAnimationFrame(() => {
+    if (state.selectedSectionId) {
+      document.getElementById(`section-${state.selectedSectionId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
 }
 
 function startSection(sectionId, mode = "section") {
@@ -613,12 +625,31 @@ function selectTest(id) {
   if (state.screen === "overview") render();
 }
 
+function renderHeaderProgress() {
+  const counts = countStatuses(state.definitions, state.results);
+  const remaining = remainingCount(counts);
+  const outcome = runOutcome(counts);
+  els.runPill.textContent = remaining
+    ? `${counts.resolved} / ${counts.total} · ${counts.resolvedPercent}%`
+    : outcome === "passed"
+      ? "Run passed"
+      : "Run failed";
+  return counts;
+}
+
 function renderShell() {
   const inRunner = state.screen === "runner";
   document.body.classList.toggle("is-runner", inRunner);
   els.overview.hidden = inRunner;
   els.runner.hidden = !inRunner;
-  document.getElementById("btn-continue").hidden = inRunner || !firstIncompleteSection(state.definitions, state.results);
+  if (els.overviewBtn) {
+    els.overviewBtn.hidden = !inRunner;
+    const counts = countStatuses(state.definitions, state.results);
+    els.overviewBtn.textContent = `← Full list · ${counts.resolved}/${counts.total}`;
+  }
+  if (els.continueBtn) {
+    els.continueBtn.hidden = inRunner || !firstIncompleteSection(state.definitions, state.results);
+  }
 }
 
 function renderOverview() {
@@ -631,7 +662,6 @@ function renderOverview() {
   els.bar.setAttribute("aria-valuenow", String(counts.resolvedPercent));
   els.bar.setAttribute("aria-valuemin", "0");
   els.bar.setAttribute("aria-valuemax", "100");
-  els.runPill.textContent = remaining ? `${counts.resolvedPercent}%` : outcome === "passed" ? "Run passed" : "Run failed";
   els.prioritySummary.textContent = ["P0", "P1"]
     .filter((key) => priorities[key])
     .map((key) => `${key}: ${priorities[key].completed} / ${priorities[key].total}`)
@@ -927,17 +957,23 @@ function renderRunner() {
             ? `Queue: ${sectionLabel(section)}`
             : "Sequential runner";
 
+  const overall = countStatuses(state.definitions, state.results);
+  const overallRemaining = remainingCount(overall);
+
   if (state.runner.done || !test) {
     const next = nextIncompleteSection(state.definitions, state.results, state.runner.sectionId);
     els.runner.innerHTML = `
       <article class="runner runner-complete">
-        <button type="button" data-back>← Back to overview</button>
+        <div class="runner__top">
+          <button type="button" data-back>← Full list</button>
+          <strong>${escapeHtml(title)}</strong>
+        </div>
+        <p class="runner__overall">Overall progress: ${overall.resolved} / ${overall.total} completed · ${overallRemaining} remaining</p>
         <h2>✓ Section complete</h2>
-        <p><strong>${escapeHtml(title)}</strong></p>
-        <p>${counts.resolved} / ${counts.total} completed</p>
+        <p>${counts.resolved} / ${counts.total} completed in this queue</p>
         <p>✓ ${counts.passed} Passed · ✕ ${counts.failed} Failed · ! ${counts.blocked} Blocked · — ${counts.skipped} Skipped</p>
         <div class="actions">
-          <button type="button" data-back>Review results</button>
+          <button type="button" data-back>View full list and progress</button>
           ${counts.failed ? `<button type="button" data-start-section="${escapeHtml(state.runner.sectionId)}" data-mode="failed">Retest failed tests</button>` : ""}
           ${next ? `<button type="button" class="primary" data-start-section="${escapeHtml(next.id)}">Continue to ${escapeHtml(sectionLabel(next))} →</button>` : `<button type="button" class="primary" data-back>Back to overview</button>`}
         </div>
@@ -954,10 +990,14 @@ function renderRunner() {
   els.runner.innerHTML = `
     <article class="runner">
       <div class="runner__top">
-        <button type="button" data-back>← Back to overview</button>
+        <button type="button" data-back>← Full list</button>
         <strong>${escapeHtml(state.runner.mode === "section" && section ? sectionLabel(section) : title)}</strong>
       </div>
-      <p class="runner__meta">Test ${index + 1} of ${queue.length} · ${counts.resolvedPercent}% complete</p>
+      <p class="runner__overall">
+        Overall: ${overall.resolved} / ${overall.total} completed · ${overallRemaining} remaining
+        <button type="button" class="linkish" data-back>View progress</button>
+      </p>
+      <p class="runner__meta">Test ${index + 1} of ${queue.length} in this queue · ${counts.resolvedPercent}% of section complete</p>
       <div class="bar"><span style="width:${counts.resolvedPercent}%"></span></div>
       <p class="runner__stats">✓ ${counts.passed} passed · ✕ ${counts.failed} failed · ! ${counts.blocked} blocked · ${remainingCount(counts)} remaining</p>
       <p class="id">${escapeHtml(test.id)} ${test.priority ? `<span class="prio ${escapeHtml(test.priority.toLowerCase())}">${escapeHtml(test.priority)}</span>` : ""} ${goalChips(test.goals)} ${badge(status)}</p>
@@ -979,6 +1019,7 @@ function renderRunner() {
       </div>
       <p class="muted">Next: ${escapeHtml(nextCase?.id || "end of queue")} · Next untested: ${escapeHtml(nextOpen && nextOpen.id !== test.id ? nextOpen.id : "none")}</p>
       <div class="runner__nav">
+        <button type="button" data-back>← Full list</button>
         <button type="button" data-step="-1">← Previous</button>
         <span>${index + 1} / ${queue.length}</span>
         <div>
@@ -1004,6 +1045,7 @@ function render() {
   els.title.textContent = state.definitions.title || "Offload Test Cases";
   document.title = state.definitions.title || "Offload Test Cases";
   renderShell();
+  renderHeaderProgress();
   if (state.screen === "runner") {
     renderRunner();
     return;
@@ -1078,6 +1120,10 @@ document.getElementById("btn-refresh").addEventListener("click", async () => {
 });
 
 document.getElementById("btn-continue").addEventListener("click", continueTesting);
+els.overviewBtn?.addEventListener("click", closeRunner);
+document.querySelector(".top__title")?.addEventListener("click", () => {
+  if (state.screen === "runner") closeRunner();
+});
 document.getElementById("btn-export").addEventListener("click", () => {
   closePopover();
   exportResults();
@@ -1490,9 +1536,18 @@ window.addEventListener("keydown", (event) => {
       applyDrawer();
       return;
     }
-    els.keysModal.hidden = true;
-    els.failModal.hidden = true;
-    els.blockModal.hidden = true;
+    const modalOpen = !els.keysModal.hidden || !els.failModal.hidden || !els.blockModal.hidden || !els.modal.hidden;
+    if (modalOpen) {
+      els.keysModal.hidden = true;
+      els.failModal.hidden = true;
+      els.blockModal.hidden = true;
+      closeModal(false);
+      return;
+    }
+    if (state.screen === "runner") {
+      closeRunner();
+      return;
+    }
     closeModal(false);
     return;
   }
