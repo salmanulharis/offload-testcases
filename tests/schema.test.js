@@ -1,15 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  adjacentTest,
   collectTestIds,
+  countByPriority,
   countStatuses,
   emptyResultsDoc,
   extractImportedResults,
+  firstWorkItem,
   flattenTestCases,
+  formatFailureReport,
   getResult,
+  matchesQuery,
+  nextWorkItem,
   normalizeResultsDoc,
   overwriteRisk,
+  remainingCount,
   resetResults,
+  runOutcome,
   upsertResult,
   validateDefinitions,
   validateResultsDoc,
@@ -172,6 +180,53 @@ test("adding a new definition id needs no KV migration", () => {
   assert.equal(after.total, before.total + 1);
   assert.equal(after.passed, before.passed);
   assert.equal(getResult(doc, "TC-ENV-NEW").status, "not_tested");
+});
+
+test("work queue prefers P0 not tested then later catalog items", () => {
+  let doc = emptyResultsDoc();
+  const first = firstWorkItem(definitions, doc);
+  assert.equal(first.priority, "P0");
+  doc = upsertResult(doc, first.id, { status: "passed" });
+  const next = nextWorkItem(definitions, doc, first.id);
+  assert.ok(next);
+  assert.notEqual(next.id, first.id);
+
+  const allPassed = flattenTestCases(definitions).reduce(
+    (acc, item) => upsertResult(acc, item.id, { status: "passed" }),
+    emptyResultsDoc()
+  );
+  assert.equal(firstWorkItem(definitions, allPassed), null);
+  assert.equal(runOutcome(countStatuses(definitions, allPassed)), "passed");
+});
+
+test("run outcome fails when completed with failures or blockers", () => {
+  const tests = flattenTestCases(definitions);
+  let doc = emptyResultsDoc();
+  for (const item of tests) {
+    doc = upsertResult(doc, item.id, { status: item.id === "TC-ENV-01" ? "failed" : "passed" });
+  }
+  const counts = countStatuses(definitions, doc);
+  assert.equal(remainingCount(counts), 0);
+  assert.equal(runOutcome(counts), "failed");
+});
+
+test("priority counts and adjacent navigation stay in catalog order", () => {
+  const tests = flattenTestCases(definitions);
+  const counts = countByPriority(definitions, emptyResultsDoc());
+  assert.ok(counts.P0.total > 0);
+  assert.equal(counts.P0.completed, 0);
+  const second = adjacentTest(tests, tests[0].id, 1);
+  assert.equal(second.id, tests[1].id);
+  assert.equal(adjacentTest(tests, tests[0].id, -1), null);
+});
+
+test("view filters and failure report use stable case ids", () => {
+  const testCase = flattenTestCases(definitions).find((item) => item.id === "TC-ENV-01");
+  const failed = { status: "failed", error: "AccessDenied", severity: "Critical", actualResult: "403" };
+  assert.equal(matchesQuery(testCase, failed, { view: "failed" }), true);
+  assert.equal(matchesQuery(testCase, failed, { view: "todo" }), false);
+  assert.match(formatFailureReport(testCase, failed), /TC-ENV-01/);
+  assert.match(formatFailureReport(testCase, failed), /AccessDenied/);
 });
 
 test("overwrite risk detects failed details", () => {

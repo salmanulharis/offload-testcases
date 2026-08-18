@@ -16,6 +16,17 @@ export const STATUS_LABELS = {
   skipped: "Skipped / N/A",
 };
 
+export const STATUS_MARKS = {
+  not_tested: "○",
+  in_progress: "◐",
+  passed: "✓",
+  failed: "✕",
+  blocked: "!",
+  skipped: "—",
+};
+
+export const RESOLVED_STATUSES = ["passed", "failed", "blocked", "skipped"];
+
 export const RESULT_FIELDS = [
   "status",
   "notes",
@@ -291,6 +302,7 @@ export function countStatuses(definitions, resultsDoc) {
     blocked: 0,
     skipped: 0,
     unknown: 0,
+    resolved: 0,
   };
 
   for (const test of tests) {
@@ -299,9 +311,13 @@ export function countStatuses(definitions, resultsDoc) {
     if (!isKnownStatus(result.status)) counts.unknown += 1;
     counts[status] += 1;
     if (status !== "not_tested") counts.completed += 1;
+    if (RESOLVED_STATUSES.includes(status)) counts.resolved += 1;
   }
 
+  counts.resolved = counts.resolved || 0;
+  counts.remaining = counts.not_tested + counts.in_progress;
   counts.percent = counts.total ? Math.round((counts.completed / counts.total) * 100) : 0;
+  counts.resolvedPercent = counts.total ? Math.round((counts.resolved / counts.total) * 100) : 0;
   return counts;
 }
 
@@ -364,9 +380,12 @@ export function extractImportedResults(raw) {
   return validateResultsDoc(candidate);
 }
 
-export function matchesQuery(test, result, { query = "", status = "all", priority = "all" } = {}) {
+export function matchesQuery(test, result, { query = "", status = "all", priority = "all", view = "all", sectionId = "" } = {}) {
+  if (sectionId && test.sectionId !== sectionId) return false;
   const shown = displayStatus(result.status);
-  if (status !== "all" && shown !== status) return false;
+  if (view === "todo" && !isWorkStatus(shown)) return false;
+  if (view !== "all" && view !== "todo" && shown !== view) return false;
+  if (view === "all" && status !== "all" && shown !== status) return false;
   if (priority !== "all" && asString(test.priority) !== priority) return false;
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
@@ -374,6 +393,81 @@ export function matchesQuery(test, result, { query = "", status = "all", priorit
     .join(" ")
     .toLowerCase();
   return haystack.includes(needle);
+}
+
+export function isWorkStatus(status) {
+  const shown = displayStatus(status);
+  return shown === "not_tested" || shown === "in_progress";
+}
+
+export function remainingCount(counts) {
+  return (counts.not_tested || 0) + (counts.in_progress || 0);
+}
+
+export function runOutcome(counts) {
+  if (remainingCount(counts) > 0) return "in_progress";
+  if ((counts.failed || 0) > 0 || (counts.blocked || 0) > 0) return "failed";
+  return "passed";
+}
+
+export function countByPriority(definitions, resultsDoc) {
+  const tests = flattenTestCases(definitions);
+  const out = {};
+  for (const test of tests) {
+    const key = asString(test.priority) || "other";
+    if (!out[key]) out[key] = { total: 0, completed: 0, not_tested: 0 };
+    out[key].total += 1;
+    const status = displayStatus(getResult(resultsDoc, test.id).status);
+    if (status !== "not_tested") out[key].completed += 1;
+    if (status === "not_tested") out[key].not_tested += 1;
+  }
+  return out;
+}
+
+function workRank(test, resultsDoc) {
+  const status = displayStatus(getResult(resultsDoc, test.id).status);
+  const priority = test.priority === "P0" ? 0 : test.priority === "P1" ? 1 : 2;
+  return status === "not_tested" ? priority : 10 + priority;
+}
+
+export function firstWorkItem(definitions, resultsDoc) {
+  const work = flattenTestCases(definitions).filter((test) =>
+    isWorkStatus(getResult(resultsDoc, test.id).status)
+  );
+  work.sort((left, right) => workRank(left, resultsDoc) - workRank(right, resultsDoc));
+  return work[0] || null;
+}
+
+export function nextWorkItem(definitions, resultsDoc, fromId) {
+  const tests = flattenTestCases(definitions);
+  const isWork = (test) => isWorkStatus(getResult(resultsDoc, test.id).status);
+  if (!fromId) return firstWorkItem(definitions, resultsDoc);
+  const fromIndex = tests.findIndex((test) => test.id === fromId);
+  return tests.slice(fromIndex + 1).find(isWork) || firstWorkItem(definitions, resultsDoc);
+}
+
+export function adjacentTest(tests, fromId, delta) {
+  if (!tests.length) return null;
+  const index = tests.findIndex((test) => test.id === fromId);
+  if (index === -1) return tests[0];
+  const next = index + delta;
+  if (next < 0 || next >= tests.length) return null;
+  return tests[next];
+}
+
+export function formatFailureReport(test, result) {
+  const value = normalizeResult(result);
+  return [
+    `${test.id} — ${test.title}`,
+    `Severity: ${value.severity || "—"}`,
+    `Expected: ${value.expectedResult || test.then || test.expectedResult || "—"}`,
+    `Actual: ${value.actualResult || "—"}`,
+    `Error: ${value.error || "—"}`,
+    value.errorDetails ? `Details: ${value.errorDetails}` : "",
+    value.comments ? `Comments: ${value.comments}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export { DEFINITION_VERSION, KV_SCHEMA_VERSION };
